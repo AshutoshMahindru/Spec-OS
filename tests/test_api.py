@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from spec_os.api.contracts import (
+    bind_api_to_schema,
     build_api_contracts_from_canonical,
     build_api_contracts_from_graph,
-    bind_api_to_schema,
 )
 from spec_os.extraction.api_spec import extract_api_spec_graph
 

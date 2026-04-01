@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from spec_os.merge import merge_graphs, merge_variable_registries, merge_schemas, merge_all_docs
+from spec_os.merge import merge_graphs, merge_schemas, merge_variable_registries
 
 
 class TestMergeGraphs:
@@ -25,6 +25,13 @@ class TestMergeVariableRegistries:
         r2 = {"variables": [{"name": "orders", "variable_type": "financial"}]}
         merged = merge_variable_registries([r1, r2])
         assert len(merged["variables"]) == 1
+
+    def test_normalizes_equivalent_names(self):
+        r1 = {"variables": [{"name": "Orders Per Day", "variable_type": "financial"}]}
+        r2 = {"variables": [{"name": "orders_per_day", "variable_type": "financial"}]}
+        merged = merge_variable_registries([r1, r2])
+        assert len(merged["variables"]) == 1
+        assert merged["variables"][0]["name"] == "orders_per_day"
 
 
 class TestMergeSchemas:

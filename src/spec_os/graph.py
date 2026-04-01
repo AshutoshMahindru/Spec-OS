@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from spec_os.helpers import normalize_text, safe_node_id
 
-
 # ── Registry factory ────────────────────────────────────────────────────────
 
 def make_node_registry(doc_id: str) -> tuple[list[dict], dict[str, dict], list[dict]]:

@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-from spec_os.extraction.classifier import classify_document
-from spec_os.extraction.prd import extract_prd_graph
-from spec_os.extraction.architecture import extract_architecture_graph
 from spec_os.extraction.api_spec import extract_api_spec_graph
+from spec_os.extraction.architecture import extract_architecture_graph
+from spec_os.extraction.classifier import classify_document
 from spec_os.extraction.data_dictionary import extract_data_dictionary_graph
-from spec_os.extraction.wireframe import extract_wireframe_graph
-from spec_os.extraction.generic import extract_generic_graph
+from spec_os.extraction.prd import extract_prd_graph
 from spec_os.extraction.router import route_extraction
 
 

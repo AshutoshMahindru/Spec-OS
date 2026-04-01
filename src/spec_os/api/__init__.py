@@ -1,1 +1,1 @@
-"""API contract generation and schema binding."""
+"""API contract generation, schema binding, and response models."""

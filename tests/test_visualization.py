@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from spec_os.visualization import generate_mermaid_diagrams
-from spec_os.extraction.prd import extract_prd_graph
 from spec_os.computation.dag import build_computation_graph
+from spec_os.extraction.prd import extract_prd_graph
+from spec_os.visualization import generate_mermaid_diagrams
 
 
 class TestMermaidDiagrams:

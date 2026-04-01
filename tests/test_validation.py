@@ -2,14 +2,14 @@
 
 from __future__ import annotations
 
-from spec_os.validation.graph_validator import validate_graph, validate_computation_graph
-from spec_os.validation.reconciliation import reconcile_spec, build_variable_to_table_mapping
-from spec_os.validation.completeness import compute_spec_quality_score, build_spec_completeness
+from spec_os.api.contracts import build_api_contracts_from_graph
+from spec_os.canonical.registry import build_variable_registry
+from spec_os.computation.dag import build_computation_graph
 from spec_os.extraction.prd import extract_prd_graph
 from spec_os.schema.builder import build_data_schema_from_graph
-from spec_os.canonical.registry import build_variable_registry
-from spec_os.api.contracts import build_api_contracts_from_graph
-from spec_os.computation.dag import build_computation_graph
+from spec_os.validation.completeness import build_spec_completeness, compute_spec_quality_score
+from spec_os.validation.graph_validator import validate_computation_graph, validate_graph
+from spec_os.validation.reconciliation import build_variable_to_table_mapping, reconcile_spec
 
 
 class TestGraphValidator:
@@ -97,3 +97,20 @@ class TestVariableTableMapping:
         mapping = build_variable_to_table_mapping({}, registry)
         assert mapping["revenue"]["table"] == "computed_metric"
         assert mapping["profit"]["table"] == "computed_metric"
+
+    def test_mapping_normalizes_display_names(self):
+        registry = {"variables": [{"name": "Orders Per Day", "raw_name": "Orders Per Day"}]}
+        mapping = build_variable_to_table_mapping({}, registry)
+        assert "orders_per_day" in mapping
+        assert mapping["orders_per_day"]["display_name"] == "Orders Per Day"
+
+    def test_reconciliation_accepts_normalized_mapping_keys(self):
+        graph = {
+            "nodes": [],
+            "edges": [],
+        }
+        schema = {"models": [{"name": "planning_context"}]}
+        registry = {"variables": [{"name": "Orders Per Day", "raw_name": "Orders Per Day"}]}
+        api = [{"endpoint": "/planning/", "response": {"data": "Planning Context"}}]
+        rec = reconcile_spec(graph, schema, registry, api)
+        assert rec["status"] == "ok"

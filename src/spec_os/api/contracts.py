@@ -14,6 +14,8 @@ This module provides two clearly-named functions:
 
 from __future__ import annotations
 
+from spec_os.helpers import normalize_name
+
 
 def _infer_request_response(endpoint: str) -> dict:
     if "planning" in endpoint:
@@ -65,16 +67,34 @@ def build_api_contracts_from_graph(graph: dict) -> list[dict]:
 
 def bind_api_to_schema(api_contracts: list[dict], schema: dict) -> list[dict]:
     """Map each API endpoint to its backing schema model."""
+    schema_models = {normalize_name(model.get("name")): model.get("name") for model in schema.get("models", []) if model.get("name")}
     bindings: list[dict] = []
     for api in api_contracts:
         ep = api.get("endpoint") or ""
-        if "planning" in ep:
-            model = "planning_context"
+        explicit_model = None
+        response = api.get("response", {})
+        if isinstance(response, dict):
+            data_ref = response.get("data")
+            if isinstance(data_ref, str):
+                explicit_model = data_ref
+
+        if explicit_model:
+            model = schema_models.get(normalize_name(explicit_model), normalize_name(explicit_model))
+        elif "planning" in ep:
+            model = schema_models.get("planning_context", "planning_context")
         elif "driver" in ep:
-            model = "driver_assumption"
+            model = schema_models.get("driver_assumption", "driver_assumption")
         elif "metric" in ep:
-            model = "computed_metric"
+            model = schema_models.get("computed_metric", "computed_metric")
         else:
             model = "unknown"
-        bindings.append({"endpoint": ep, "method": api.get("method"), "model": model})
+
+        bindings.append(
+            {
+                "endpoint": ep,
+                "method": api.get("method"),
+                "model": model,
+                "status": "bound" if model != "unknown" else "unresolved",
+            }
+        )
     return bindings
