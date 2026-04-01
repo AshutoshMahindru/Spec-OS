@@ -42,6 +42,7 @@ def build_api_contracts_from_canonical(canonical_model: dict) -> list[dict]:
             "request": inferred["request"],
             "response": inferred["response"],
             "headers": {"Authorization": "Bearer <token>"},
+            "citations": ent.get("citations", []),
         })
     return contracts
 
@@ -61,6 +62,7 @@ def build_api_contracts_from_graph(graph: dict) -> list[dict]:
             "request": inferred["request"],
             "response": inferred["response"],
             "headers": {"Authorization": "Bearer <token>"},
+            "citations": n.get("citations", []),
         })
     return contracts
 

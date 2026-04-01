@@ -33,14 +33,23 @@ def build_canonical_model(graph: dict) -> dict:
                     "name": cname,
                     "raw_names": [raw],
                     "variable_type": n.get("variable_type", "unknown"),
+                    "citations": list(n.get("citations", [])),
                 }
             else:
                 variables[cname]["raw_names"].append(raw)
+                for citation in n.get("citations", []):
+                    if citation not in variables[cname]["citations"]:
+                        variables[cname]["citations"].append(citation)
 
         elif ntype in {"DataModel", "API", "Service", "UIComponent"}:
             key = normalize_name(n.get("name") or n.get("endpoint") or n.get("id"))
             if key not in entities:
                 entities[key] = n
+            else:
+                for citation in n.get("citations", []):
+                    entities[key].setdefault("citations", [])
+                    if citation not in entities[key]["citations"]:
+                        entities[key]["citations"].append(citation)
 
         elif ntype == "Metric":
             formula = n.get("formula")
@@ -55,6 +64,7 @@ def build_canonical_model(graph: dict) -> dict:
                 "name": lhs,
                 "formula": f"{lhs} = {expression}" if expression else formula,
                 "depends_on": list(dict.fromkeys(deps)),
+                "citations": list(n.get("citations", [])),
             }
 
     for e in graph.get("edges", []):

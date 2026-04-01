@@ -64,6 +64,13 @@ class TestIngestFile:
         assert "computation" in spec
         assert "validation" in spec
 
+    def test_traceability_includes_citations(self, sample_mhtml):
+        result = ingest_file(str(sample_mhtml))
+        doc_dir = settings.base_dir / result["doc_id"]
+        traceability = json.loads((doc_dir / "artifacts" / "traceability.json").read_text())
+        assert traceability
+        assert traceability[0]["citations"]
+
     def test_nonexistent_file_returns_error(self):
         result = ingest_file("/nonexistent/file.mhtml")
         assert result["status"] == "error"

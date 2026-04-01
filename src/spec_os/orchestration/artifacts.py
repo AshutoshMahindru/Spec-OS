@@ -27,6 +27,7 @@ def build_traceability_matrix(structured: list[dict], graph: dict, doc_type: str
                 "artifact_type": dst.get("type"),
                 "artifact_name": dst.get("name") or dst.get("endpoint") or dst.get("formula") or dst.get("description"),
                 "status": "extracted",
+                "citations": dst.get("citations", src.get("citations", [])),
             })
 
     if not matrix:
@@ -37,6 +38,14 @@ def build_traceability_matrix(structured: list[dict], graph: dict, doc_type: str
                     "artifact_type": doc_type,
                     "artifact_name": sec.get("text"),
                     "status": "indexed",
+                    "citations": [
+                        {
+                            "section_index": sec.get("source_span", {}).get("section_index"),
+                            "source_tag": sec.get("source_span", {}).get("source_tag"),
+                            "section_title": sec.get("text"),
+                            "text": sec.get("text"),
+                        }
+                    ],
                 })
 
     return matrix

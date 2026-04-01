@@ -13,7 +13,15 @@ from spec_os.api.contracts import (
     build_api_contracts_from_canonical,
     build_api_contracts_from_graph,
 )
-from spec_os.artifacts import load_json_artifact, write_artifact_bundle
+from spec_os.artifacts import (
+    EmbeddingStatusModel,
+    ExecutionPlanModel,
+    ReconciliationModel,
+    SystemSpecModel,
+    TraceabilityRowModel,
+    load_json_artifact,
+    write_artifact_bundle,
+)
 from spec_os.canonical.model import build_canonical_model
 from spec_os.computation.dag import build_computation_graph, build_execution_plan
 from spec_os.config import settings
@@ -64,22 +72,24 @@ def _build_system_spec(
     embedding_status: dict,
     source_documents: list[dict] | None = None,
 ) -> dict[str, Any]:
-    return {
-        "meta": {
+    return SystemSpecModel.model_validate(
+        {
+            "meta": {
             "doc_id": doc_id,
             "doc_type": doc_type,
             "spec_score": spec_score.get("score"),
             "ready_for_codegen": completeness.get("ready_for_codegen"),
             "embedding_backend": embedding_status.get("actual_backend", "none"),
         },
-        "sources": source_documents or [],
-        "canonical": canonical_model,
-        "data_model": {"schema": canonical_schema, "ddl": ddl_sql},
-        "application": {"apis": api_contracts, "bindings": api_bindings},
-        "computation": {"graph": computation_graph, "execution_plan": execution_plan},
-        "runtime": {"variable_mapping": var_table_map, "embeddings": embedding_status},
-        "validation": {"reconciliation": reconciliation, "completeness": completeness},
-    }
+            "sources": source_documents or [],
+            "canonical": canonical_model,
+            "data_model": {"schema": canonical_schema, "ddl": ddl_sql},
+            "application": {"apis": api_contracts, "bindings": api_bindings},
+            "computation": {"graph": computation_graph, "execution_plan": execution_plan},
+            "runtime": {"variable_mapping": var_table_map, "embeddings": embedding_status},
+            "validation": {"reconciliation": reconciliation, "completeness": completeness},
+        }
+    ).model_dump(mode="json")
 
 
 def _build_artifact_bundle(
@@ -157,6 +167,7 @@ def ingest_file(file_path: str | Path) -> dict:
             )
         else:
             logger.info("Skipping embeddings for %s (%s)", doc_id, embedding_status.get("reason"))
+        embedding_status = EmbeddingStatusModel.model_validate(embedding_status).model_dump(mode="json")
 
         # ── LAYER 2: Extraction ─────────────────────────────────────────
         doc_type = classify_document(structured)
@@ -185,12 +196,14 @@ def ingest_file(file_path: str | Path) -> dict:
 
         canonical_schema = build_canonical_schema(schema, variable_registry)
         var_table_map = build_variable_to_table_mapping(schema, variable_registry)
-        execution_plan = build_execution_plan(computation_graph)
+        execution_plan = ExecutionPlanModel.model_validate(build_execution_plan(computation_graph)).model_dump(mode="json")
         api_bindings = bind_api_to_schema(api_contracts, schema)
 
         # ── LAYER 5: Validation ─────────────────────────────────────────
         comp_validation = validate_computation_graph(computation_graph)
-        reconciliation = reconcile_spec(graph, schema, variable_registry, api_contracts)
+        reconciliation = ReconciliationModel.model_validate(
+            reconcile_spec(graph, schema, variable_registry, api_contracts)
+        ).model_dump(mode="json")
         spec_score = compute_spec_quality_score(reconciliation, variable_registry, schema, api_contracts, computation_graph)
         completeness = build_spec_completeness(reconciliation, variable_registry, schema, api_contracts, computation_graph)
 
@@ -198,7 +211,12 @@ def ingest_file(file_path: str | Path) -> dict:
         mermaid = generate_mermaid_diagrams(graph, computation_graph)
         ddl_sql = generate_starter_ddl(graph, schema=schema, doc_type=doc_type)
         roadmap = build_engineering_roadmap(graph, doc_type)
-        traceability = build_traceability_matrix(structured, graph, doc_type)
+        traceability = [
+            row.model_dump(mode="json")
+            for row in (
+                TraceabilityRowModel.model_validate(item) for item in build_traceability_matrix(structured, graph, doc_type)
+            )
+        ]
 
         system_spec = _build_system_spec(
             doc_id=doc_id,
@@ -348,15 +366,24 @@ def ingest_multiple_files(file_paths: list[str]) -> dict:
     mermaid = generate_mermaid_diagrams(merged["graph"], merged["computation_graph"])
     ddl_sql = generate_starter_ddl(merged["graph"], schema=schema, doc_type="MERGED")
     roadmap = build_engineering_roadmap(merged["graph"], "MERGED")
-    traceability = [row for doc in results for row in doc.get("traceability", [])]
-    embedding_status = {
+    traceability = [
+        row.model_dump(mode="json")
+        for row in (
+            TraceabilityRowModel.model_validate(item) for doc in results for item in doc.get("traceability", [])
+        )
+    ]
+    embedding_status = EmbeddingStatusModel.model_validate(
+        {
         "enabled": False,
         "requested_backend": settings.embedding_backend,
         "actual_backend": "none",
         "available": False,
         "stored": False,
         "reason": "merge_output",
-    }
+        }
+    ).model_dump(mode="json")
+    merged["execution_plan"] = ExecutionPlanModel.model_validate(merged["execution_plan"]).model_dump(mode="json")
+    merged["reconciliation"] = ReconciliationModel.model_validate(merged["reconciliation"]).model_dump(mode="json")
     system_spec = _build_system_spec(
         doc_id=merged_id,
         doc_type="MERGED",

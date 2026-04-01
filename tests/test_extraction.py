@@ -57,6 +57,25 @@ class TestPrdExtractor:
         node_types = {n["type"] for n in graph["nodes"]}
         assert "Feature" in node_types
 
+    def test_extracted_nodes_include_citations(self):
+        structured = [
+            {
+                "type": "heading",
+                "level": 2,
+                "text": "Finance-First Philosophy",
+                "source_span": {"section_index": 0, "source_tag": "h2", "text": "Finance-First Philosophy"},
+            },
+            {
+                "type": "paragraph",
+                "text": "Orders * AOV = Revenue",
+                "source_span": {"section_index": 1, "source_tag": "p", "text": "Orders * AOV = Revenue"},
+            },
+        ]
+        graph = extract_prd_graph(structured, "prd3")
+        metric = next(node for node in graph["nodes"] if node["type"] == "Metric")
+        assert metric["citations"][0]["section_title"] == "Finance-First Philosophy"
+        assert "Revenue" in metric["citations"][0]["text"]
+
 
 class TestArchitectureExtractor:
     def test_flow_edges(self, architecture_structured):

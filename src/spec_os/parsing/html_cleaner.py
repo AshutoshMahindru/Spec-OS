@@ -41,11 +41,16 @@ def _clean_with_bs4(html: str) -> list[Section]:
         text = normalize_text(tag.get_text(separator=" ", strip=True))
         if not text:
             continue
+        source_span = {
+            "section_index": len(sections),
+            "source_tag": tag.name,
+            "text": text,
+        }
         if tag.name.startswith("h"):
             level = int(tag.name[1]) if tag.name[1:].isdigit() else 1
-            sections.append({"type": "heading", "level": level, "text": text})
+            sections.append({"type": "heading", "level": level, "text": text, "source_span": source_span})
         else:
-            sections.append({"type": "paragraph", "text": text})
+            sections.append({"type": "paragraph", "text": text, "source_span": source_span})
     return sections
 
 
@@ -57,8 +62,9 @@ def _clean_naive(html: str) -> list[Section]:
         text = normalize_text(line.strip())
         if not text:
             continue
+        source_span = {"section_index": len(sections), "source_tag": "line", "text": text}
         if len(text) < 100 and (text.isupper() or re.match(r"^\d+\.", text)):
-            sections.append({"type": "heading", "level": 2, "text": text})
+            sections.append({"type": "heading", "level": 2, "text": text, "source_span": source_span})
         else:
-            sections.append({"type": "paragraph", "text": text})
+            sections.append({"type": "paragraph", "text": text, "source_span": source_span})
     return sections

@@ -1,0 +1,19 @@
+From: <Saved by Spec-OS>
+MIME-Version: 1.0
+Content-Type: multipart/related; boundary=----=_NextPart_000_0001;
+
+------=_NextPart_000_0001
+Content-Type: text/html; charset=us-ascii
+Content-Transfer-Encoding: 7bit
+
+<html><body>
+<h1>API Design</h1>
+<p>Base Path: /api/v1/ | Auth: JWT Bearer Token</p>
+<h2>Planning APIs</h2>
+<p>GET /planning/contexts</p>
+<p>POST /driver/assumptions</p>
+<p>GET /metric/value</p>
+<h2>Service Groups</h2>
+<p>/planning/contexts returns active planning contexts.</p>
+</body></html>
+------=_NextPart_000_0001--

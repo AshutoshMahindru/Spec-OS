@@ -31,6 +31,7 @@ class TestCanonicalModel:
         metric = canonical["metrics"][0]
         assert metric["name"] == "revenue"
         assert metric["depends_on"] == ["orders", "aov"]
+        assert metric["citations"]
 
     def test_entities_include_services(self):
         structured = [
