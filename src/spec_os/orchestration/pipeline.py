@@ -23,12 +23,14 @@ from spec_os.artifacts import (
     write_artifact_bundle,
 )
 from spec_os.canonical.model import build_canonical_model
+from spec_os.compiler import build_modelling_engine_specos_compiler_import
 from spec_os.computation.dag import build_computation_graph, build_execution_plan
 from spec_os.config import settings
 from spec_os.embeddings import embed_chunks, get_embedding_status, store_embeddings
 from spec_os.errors import build_error_payload
 from spec_os.extraction.classifier import classify_document
 from spec_os.extraction.router import route_extraction
+from spec_os.importers import build_modelling_engine_specos_import
 from spec_os.orchestration.artifacts import build_engineering_roadmap, build_traceability_matrix
 from spec_os.orchestration.spec_folder import generate_spec_folder
 from spec_os.parsing.chunker import chunk_text
@@ -303,6 +305,53 @@ def ingest_file(file_path: str | Path) -> dict:
             error_code="INGESTION_FAILED",
             message="Failed to ingest file",
             details={"source": str(file_path)},
+            debug=_debug_block(exc),
+        )
+
+
+def ingest_specos_repo(repo_path: str | Path, doc_id: str | None = None, mode: str = "importer") -> dict:
+    """Import or compile a Modelling_Engine_SpecOS repo into a standard Spec-OS bundle."""
+    settings.ensure_dirs()
+
+    try:
+        if mode == "importer":
+            imported = build_modelling_engine_specos_import(repo_path, doc_id=doc_id)
+            status = "imported"
+            import_mode = "modelling_engine_specos"
+        elif mode == "compiler":
+            imported = build_modelling_engine_specos_compiler_import(repo_path, doc_id=doc_id)
+            status = "compiled"
+            import_mode = "modelling_engine_specos_compiler"
+        else:
+            raise ValueError(f"Unsupported spec repo mode: {mode}")
+
+        write_artifact_bundle(settings.base_dir, imported["doc_id"], imported["bundle"])
+        spec_dir = generate_spec_folder(
+            settings.base_dir,
+            imported["doc_id"],
+            imported["spec_folder_payload"],
+        )
+        return {
+            "doc_id": imported["doc_id"],
+            "spec_dir": str(spec_dir),
+            "doc_type": imported["doc_type"],
+            "embedding_backend": imported["bundle"]["embedding_status"].get("actual_backend", "none"),
+            "status": status,
+            "import_mode": import_mode,
+            **({"compiler_mode": imported["compiler_mode"]} if "compiler_mode" in imported else {}),
+            **imported["counts"],
+        }
+    except Exception as exc:
+        logger.exception("Spec repo %s failed for %s", mode, repo_path)
+        return build_error_payload(
+            doc_id=doc_id,
+            error_code="SPECOS_COMPILER_FAILED" if mode == "compiler" else "SPECOS_IMPORT_FAILED",
+            message=(
+                "Failed to compile Modelling_Engine_SpecOS repo"
+                if mode == "compiler"
+                else "Failed to import Modelling_Engine_SpecOS repo"
+            ),
+            details={"source": str(repo_path), "mode": mode},
             debug=_debug_block(exc),
         )
 
