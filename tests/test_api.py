@@ -3,9 +3,9 @@
 from __future__ import annotations
 
 from spec_os.api.contracts import (
+    bind_api_to_schema,
     build_api_contracts_from_canonical,
     build_api_contracts_from_graph,
-    bind_api_to_schema,
 )
 from spec_os.extraction.api_spec import extract_api_spec_graph
 
@@ -20,13 +20,19 @@ class TestApiContracts:
     def test_from_canonical_with_api_entities(self):
         canonical = {
             "entities": [
-                {"type": "API", "endpoint": "/planning/", "method": "GET"},
+                {
+                    "type": "API",
+                    "endpoint": "/planning/",
+                    "method": "GET",
+                    "citations": [{"section_title": "Planning APIs", "text": "GET /planning/"}],
+                },
                 {"type": "Service", "name": "Compute"},
             ],
         }
         contracts = build_api_contracts_from_canonical(canonical)
         assert len(contracts) == 1
         assert contracts[0]["endpoint"] == "/planning/"
+        assert contracts[0]["citations"][0]["section_title"] == "Planning APIs"
 
     def test_from_canonical_without_apis(self):
         canonical = {"entities": [{"type": "Service", "name": "Compute"}]}

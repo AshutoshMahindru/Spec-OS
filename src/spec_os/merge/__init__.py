@@ -35,11 +35,11 @@ def merge_variable_registries(registries: list[dict]) -> dict:
     merged: dict[str, dict] = {}
     for reg in registries:
         for v in reg.get("variables", []):
-            name = (v.get("name") or "").lower()
+            name = normalize_name(v.get("name"))
             if not name:
                 continue
             if name not in merged:
-                merged[name] = v
+                merged[name] = {**v, "name": name}
             else:
                 for k, val in v.items():
                     if k not in merged[name] or not merged[name][k]:
@@ -53,11 +53,11 @@ def merge_schemas(schemas: list[dict]) -> dict:
 
     for s in schemas:
         for m in s.get("models", []):
-            name = (m.get("name") or "").lower()
+            name = normalize_name(m.get("name"))
             if not name:
                 continue
             if name not in model_map:
-                model_map[name] = m
+                model_map[name] = {**m, "name": name}
             else:
                 existing_fields = {f.get("name"): f for f in model_map[name].get("fields", [])}
                 for f in m.get("fields", []):

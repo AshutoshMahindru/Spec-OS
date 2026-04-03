@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from spec_os.parsing.html_cleaner import clean_html
 from spec_os.parsing.chunker import chunk_text
+from spec_os.parsing.html_cleaner import clean_html
 
 
 class TestCleanHtml:

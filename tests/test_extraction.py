@@ -2,13 +2,11 @@
 
 from __future__ import annotations
 
-from spec_os.extraction.classifier import classify_document
-from spec_os.extraction.prd import extract_prd_graph
-from spec_os.extraction.architecture import extract_architecture_graph
 from spec_os.extraction.api_spec import extract_api_spec_graph
+from spec_os.extraction.architecture import extract_architecture_graph
+from spec_os.extraction.classifier import classify_document
 from spec_os.extraction.data_dictionary import extract_data_dictionary_graph
-from spec_os.extraction.wireframe import extract_wireframe_graph
-from spec_os.extraction.generic import extract_generic_graph
+from spec_os.extraction.prd import extract_prd_graph
 from spec_os.extraction.router import route_extraction
 
 
@@ -58,6 +56,25 @@ class TestPrdExtractor:
         graph = extract_prd_graph(structured, "prd2")
         node_types = {n["type"] for n in graph["nodes"]}
         assert "Feature" in node_types
+
+    def test_extracted_nodes_include_citations(self):
+        structured = [
+            {
+                "type": "heading",
+                "level": 2,
+                "text": "Finance-First Philosophy",
+                "source_span": {"section_index": 0, "source_tag": "h2", "text": "Finance-First Philosophy"},
+            },
+            {
+                "type": "paragraph",
+                "text": "Orders * AOV = Revenue",
+                "source_span": {"section_index": 1, "source_tag": "p", "text": "Orders * AOV = Revenue"},
+            },
+        ]
+        graph = extract_prd_graph(structured, "prd3")
+        metric = next(node for node in graph["nodes"] if node["type"] == "Metric")
+        assert metric["citations"][0]["section_title"] == "Finance-First Philosophy"
+        assert "Revenue" in metric["citations"][0]["text"]
 
 
 class TestArchitectureExtractor:

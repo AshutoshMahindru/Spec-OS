@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 import pytest
 
 
@@ -49,3 +51,18 @@ def api_structured():
         {"type": "heading", "level": 2, "text": "API Design"},
         {"type": "paragraph", "text": "GET /planning/"},
     ]
+
+
+@pytest.fixture
+def corpus_dir() -> Path:
+    return Path(__file__).parent / "fixtures" / "corpus"
+
+
+@pytest.fixture
+def realistic_corpus(corpus_dir: Path) -> dict[str, Path]:
+    return {
+        "prd": corpus_dir / "prd_finance_planning.mhtml",
+        "api": corpus_dir / "api_platform_contracts.mhtml",
+        "architecture": corpus_dir / "architecture_engine_flow.mhtml",
+        "data_dictionary": corpus_dir / "data_dictionary_planning_models.mhtml",
+    }

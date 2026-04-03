@@ -3,10 +3,9 @@
 from __future__ import annotations
 
 from spec_os.extraction.prd import extract_prd_graph
-from spec_os.schema.builder import build_data_schema_from_graph, build_data_schema_from_canonical
-from spec_os.schema.enrichment import enrich_schema_types
+from spec_os.schema.builder import build_data_schema_from_canonical, build_data_schema_from_graph
 from spec_os.schema.ddl import generate_starter_ddl
-from spec_os.canonical.model import build_canonical_model
+from spec_os.schema.enrichment import enrich_schema_types
 
 
 class TestSchemaBuilder:

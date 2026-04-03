@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
-from spec_os.computation.formula import evaluate_formula, tokenize, parse_formula
-from spec_os.computation.dag import build_computation_graph, build_execution_plan
+import pytest
+
+from spec_os.computation.dag import build_computation_graph, build_execution_plan, run_execution
+from spec_os.computation.formula import FormulaSyntaxError, evaluate_formula, parse_formula, tokenize
 from spec_os.extraction.prd import extract_prd_graph
 
 
@@ -38,6 +40,24 @@ class TestFormulaEngine:
         result = evaluate_formula("SUM(1, 2, 3)", {})
         assert result == 6.0  # not crashing on comma tokens
 
+    def test_operator_precedence(self):
+        assert evaluate_formula("2 + 3 * 4", {}) == 14.0
+
+    def test_parentheses_override_precedence(self):
+        assert evaluate_formula("(2 + 3) * 4", {}) == 20.0
+
+    def test_nested_functions(self):
+        result = evaluate_formula("ROUND(AVG(Orders, AOV), 2)", {"Orders": 100, "AOV": 25})
+        assert result == 62.5
+
+    def test_comparisons_and_boolean_logic(self):
+        result = evaluate_formula("IF(Orders > AOV AND NOT Discounted, 1, 0)", {"Orders": 100, "AOV": 25, "Discounted": False})
+        assert result == 1.0
+
+    def test_invalid_expression_raises_syntax_error(self):
+        with pytest.raises(FormulaSyntaxError):
+            evaluate_formula("2 + * 3", {})
+
 
 class TestTokenize:
     def test_basic(self):
@@ -61,6 +81,11 @@ class TestParseFormula:
         assert lhs == "Orders * AOV"
         assert rhs is None
 
+    def test_reversed_assignment(self):
+        lhs, rhs = parse_formula("Orders * AOV = Revenue")
+        assert lhs == "Revenue"
+        assert rhs == "Orders * AOV"
+
 
 class TestComputationGraph:
     def test_builds_from_graph(self, finance_structured):
@@ -80,10 +105,68 @@ class TestComputationGraph:
 
 class TestExecutionPlan:
     def test_creates_steps(self):
-        comp = {"metrics": [
-            {"metric": "revenue", "depends_on": ["orders", "aov"]},
-            {"metric": "profit", "depends_on": ["revenue", "cost"]},
-        ]}
+        comp = {
+            "metrics": [
+                {"metric": "revenue", "depends_on": ["orders", "aov"]},
+                {"metric": "profit", "depends_on": ["revenue", "cost"]},
+            ],
+            "available_inputs": ["orders", "aov", "cost"],
+        }
         plan = build_execution_plan(comp)
         assert len(plan["execution_steps"]) == 2
         assert plan["execution_steps"][0]["step"] == 1
+
+    def test_topological_sort_orders_dependencies_first(self):
+        comp = {
+            "metrics": [
+                {"metric": "profit", "depends_on": ["revenue", "cost"]},
+                {"metric": "revenue", "depends_on": ["orders", "aov"]},
+            ],
+            "available_inputs": ["orders", "aov", "cost"],
+        }
+        plan = build_execution_plan(comp)
+        assert [step["compute"] for step in plan["execution_steps"]] == ["revenue", "profit"]
+        assert plan["status"] == "ok"
+
+    def test_detects_missing_dependencies_when_inputs_declared(self):
+        comp = {
+            "metrics": [{"metric": "revenue", "depends_on": ["orders", "missing_driver"]}],
+            "available_inputs": ["orders"],
+        }
+        plan = build_execution_plan(comp)
+        assert any(issue["type"] == "UNRESOLVED_DEPENDENCY" for issue in plan["issues"])
+        assert plan["status"] == "invalid"
+
+    def test_detects_cycles(self):
+        comp = {
+            "metrics": [
+                {"metric": "revenue", "depends_on": ["profit"]},
+                {"metric": "profit", "depends_on": ["revenue"]},
+            ],
+            "available_inputs": [],
+        }
+        plan = build_execution_plan(comp)
+        assert any(issue["type"] == "CYCLE_DETECTED" for issue in plan["issues"])
+        assert plan["status"] == "invalid"
+
+    def test_run_execution_uses_dependency_order(self):
+        system_spec = {
+            "computation": {
+                "graph": {
+                    "metrics": [
+                        {"metric": "profit", "formula": "profit = revenue - cost"},
+                        {"metric": "revenue", "formula": "Orders * AOV = Revenue"},
+                    ],
+                },
+                "execution_plan": {
+                    "status": "ok",
+                    "execution_steps": [
+                        {"step": 1, "compute": "revenue", "inputs": ["orders", "aov"]},
+                        {"step": 2, "compute": "profit", "inputs": ["revenue", "cost"]},
+                    ],
+                },
+            },
+        }
+        results = run_execution(system_spec, {"orders": 100, "aov": 25, "cost": 500})
+        assert results["revenue"] == 2500.0
+        assert results["profit"] == 2000.0

@@ -6,19 +6,13 @@ into a single normalised structure that downstream modules depend on.
 
 from __future__ import annotations
 
-import re
-
+from spec_os.computation.formula import extract_formula_dependencies, parse_formula
 from spec_os.helpers import normalize_name
 
 
 def _parse_formula_vars(formula: str) -> list[str]:
-    """Extract RHS variable tokens from a formula string like ``Revenue = Orders * AOV``."""
-    if not formula:
-        return []
-    parts = formula.split("=")
-    rhs = parts[-1] if len(parts) > 1 else formula
-    tokens = re.findall(r"\b[A-Za-z][A-Za-z0-9_]*\b", rhs)
-    return list(dict.fromkeys(tokens))
+    """Extract normalized variable tokens from a formula string."""
+    return extract_formula_dependencies(formula)
 
 
 def build_canonical_model(graph: dict) -> dict:
@@ -39,26 +33,38 @@ def build_canonical_model(graph: dict) -> dict:
                     "name": cname,
                     "raw_names": [raw],
                     "variable_type": n.get("variable_type", "unknown"),
+                    "citations": list(n.get("citations", [])),
                 }
             else:
                 variables[cname]["raw_names"].append(raw)
+                for citation in n.get("citations", []):
+                    if citation not in variables[cname]["citations"]:
+                        variables[cname]["citations"].append(citation)
 
         elif ntype in {"DataModel", "API", "Service", "UIComponent"}:
             key = normalize_name(n.get("name") or n.get("endpoint") or n.get("id"))
             if key not in entities:
                 entities[key] = n
+            else:
+                for citation in n.get("citations", []):
+                    entities[key].setdefault("citations", [])
+                    if citation not in entities[key]["citations"]:
+                        entities[key]["citations"].append(citation)
 
         elif ntype == "Metric":
             formula = n.get("formula")
             if not formula:
                 continue
-            parts = formula.split("=")
-            lhs = normalize_name(parts[0].strip()) if len(parts) > 1 else normalize_name(formula)
-            deps = [normalize_name(d) for d in _parse_formula_vars(formula)]
+            metric_name, expression = parse_formula(formula)
+            lhs = normalize_name(metric_name)
+            deps = [dep for dep in _parse_formula_vars(formula) if dep and dep != lhs]
+            if expression is None:
+                expression = formula
             metrics[lhs] = {
                 "name": lhs,
-                "formula": formula,
+                "formula": f"{lhs} = {expression}" if expression else formula,
                 "depends_on": list(dict.fromkeys(deps)),
+                "citations": list(n.get("citations", [])),
             }
 
     for e in graph.get("edges", []):

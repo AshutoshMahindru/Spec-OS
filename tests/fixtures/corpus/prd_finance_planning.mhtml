@@ -1,0 +1,22 @@
+From: <Saved by Spec-OS>
+MIME-Version: 1.0
+Content-Type: multipart/related; boundary=----=_NextPart_000_0000;
+
+------=_NextPart_000_0000
+Content-Type: text/html; charset=us-ascii
+Content-Transfer-Encoding: 7bit
+
+<html><body>
+<h1>Product Requirements Document v4</h1>
+<p>Functional Requirements for the planning workspace.</p>
+<h2>MVP Definition</h2>
+<p>The MVP includes planning workflow support and review checkpoints.</p>
+<h2>Finance-First Philosophy</h2>
+<p>Orders * AOV = Revenue</p>
+<p>Revenue - Cost = Profit</p>
+<h2>Primary Users</h2>
+<p>Planner: owns scenario creation and approval routing.</p>
+<h2>Planning Workflow</h2>
+<p>Approval steps coordinate draft review and release readiness.</p>
+</body></html>
+------=_NextPart_000_0000--

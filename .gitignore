@@ -10,6 +10,7 @@ build/
 
 # Virtual environments
 .venv/
+.venv314/
 venv/
 env/
 
@@ -29,6 +30,8 @@ htmlcov/
 data/
 *.npy
 *.index
+shadow/baseline/
+shadow/generated_phase_artifacts/
 
 # OS
 .DS_Store

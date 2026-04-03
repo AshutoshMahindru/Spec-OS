@@ -2,6 +2,8 @@
 
 from __future__ import annotations
 
+from spec_os.computation.dag import build_execution_plan
+
 
 def validate_graph(graph: dict) -> dict:
     """Check for orphan edges, duplicate ids, and missing required fields."""
@@ -41,5 +43,8 @@ def validate_computation_graph(comp: dict) -> dict:
         for dep in m.get("depends_on", []):
             if not dep:
                 issues.append({"type": "INVALID_DEPENDENCY", "metric": metric})
+
+    plan = build_execution_plan(comp)
+    issues.extend(plan.get("issues", []))
 
     return {"issues": issues, "status": "ok" if not issues else "invalid"}

@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from spec_os.graph import make_node_registry, ensure_node, add_edge
+from spec_os.graph import add_edge, ensure_node, make_node_registry
 
 
 class TestMakeNodeRegistry:

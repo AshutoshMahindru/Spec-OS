@@ -28,6 +28,10 @@ class TestCanonicalModel:
         canonical = build_canonical_model(graph)
         assert len(canonical["variables"]) > 0
         assert len(canonical["metrics"]) > 0
+        metric = canonical["metrics"][0]
+        assert metric["name"] == "revenue"
+        assert metric["depends_on"] == ["orders", "aov"]
+        assert metric["citations"]
 
     def test_entities_include_services(self):
         structured = [

@@ -13,7 +13,6 @@ from __future__ import annotations
 
 from collections import defaultdict
 
-
 # ── From canonical model (preferred) ────────────────────────────────────────
 
 def build_data_schema_from_canonical(canonical_model: dict) -> dict:
