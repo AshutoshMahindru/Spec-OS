@@ -57,6 +57,25 @@ Every successful ingest or merge produces a `<doc_id>/` directory with the same 
 - `artifacts/roadmap.json`: engineering roadmap suggestion
 - `artifacts/traceability.json`: source-section to artifact traceability rows
 
+Imported spec-pack bundles use the same layout. When an upstream repo carries richer validation objects than the base contract, Spec-OS preserves them under `system_spec.json -> validation -> source_validation`.
+
+## Spec Repo Modes
+
+Modelling_Engine_SpecOS repos currently support two explicit entry modes:
+
+- `--specos-repo-mode importer`: stable default; reads the checked-in RC artifact pack
+- `--specos-repo-mode compiler`: experimental; recompiles the upstream artifact pack from phase specs before normalization
+
+Both modes write the same on-disk bundle layout shown above and generate the same `<doc_id>_spec/` folder structure.
+
+The CLI summary distinguishes them with:
+
+- `status: "imported"` and `import_mode: "modelling_engine_specos"` for the stable importer path
+- `status: "compiled"` and `import_mode: "modelling_engine_specos_compiler"` for the experimental compiler path
+- `compiler_mode: "shadow_phase_spec_compiler"` only when the compiler path is used
+
+`doc_type` remains `SPECOS_REPO` in both cases.
+
 ## Generated Spec Folder
 
 Each bundle also produces a `<doc_id>_spec/` directory for downstream agents:
