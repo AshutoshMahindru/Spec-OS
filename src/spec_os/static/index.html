@@ -1,0 +1,1116 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Spec-OS</title>
+<link rel="icon" type="image/svg+xml" href="/favicon.svg">
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<style>
+/* ================================================================
+   DESIGN TOKENS
+   ================================================================ */
+:root {
+  --bg: #0a0c10;
+  --bg2: #0d1117;
+  --surface: #161b22;
+  --surface2: #1c2129;
+  --surface3: #21262d;
+  --border: #30363d;
+  --border2: #3d444d;
+  --text: #e6edf3;
+  --text2: #8b949e;
+  --text3: #6e7681;
+  --accent: #58a6ff;
+  --accent2: #388bfd;
+  --accent-dim: rgba(56,139,253,0.10);
+  --green: #3fb950;
+  --green-dim: rgba(63,185,80,0.12);
+  --yellow: #d29922;
+  --yellow-dim: rgba(210,153,34,0.12);
+  --red: #f85149;
+  --red-dim: rgba(248,81,73,0.10);
+  --purple: #bc8cff;
+  --purple-dim: rgba(188,140,255,0.10);
+  --orange: #f0883e;
+  --radius: 10px;
+  --radius-lg: 14px;
+  --sidebar-w: 300px;
+  --header-h: 56px;
+  --shadow: 0 1px 3px rgba(0,0,0,0.3), 0 4px 12px rgba(0,0,0,0.15);
+  --transition: 0.2s cubic-bezier(0.4,0,0.2,1);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  min-height: 100vh;
+  overflow: hidden;
+}
+
+/* ================================================================
+   HEADER
+   ================================================================ */
+header {
+  position: fixed; top:0; left:0; right:0; height: var(--header-h);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 20px;
+  z-index: 200;
+  backdrop-filter: blur(12px);
+}
+.logo { display:flex; align-items:center; gap:10px; }
+.logo-icon {
+  width:32px; height:32px; border-radius:8px;
+  background: linear-gradient(135deg, var(--accent), var(--purple));
+  display:flex; align-items:center; justify-content:center;
+  color: #fff; font-weight:800; font-size:14px;
+}
+.logo h1 { font-size:18px; font-weight:700; letter-spacing:-0.3px; }
+.logo h1 span { color: var(--accent); }
+.header-right { display:flex; align-items:center; gap:12px; }
+.version-badge {
+  font-size:11px; color: var(--text2);
+  background: var(--surface2); padding:4px 10px;
+  border-radius:20px; border:1px solid var(--border);
+}
+.health-dot {
+  width:8px; height:8px; border-radius:50%;
+  background: var(--green); display:inline-block;
+  animation: pulse-health 2s infinite;
+}
+@keyframes pulse-health {
+  0%,100% { opacity:1; } 50% { opacity:0.5; }
+}
+
+/* ================================================================
+   LAYOUT: SIDEBAR + MAIN
+   ================================================================ */
+.app {
+  display: flex;
+  height: calc(100vh - var(--header-h));
+  margin-top: var(--header-h);
+}
+
+/* ── SIDEBAR ─────────────────────────────── */
+.sidebar {
+  width: var(--sidebar-w);
+  min-width: var(--sidebar-w);
+  background: var(--bg2);
+  border-right: 1px solid var(--border);
+  display: flex; flex-direction: column;
+  overflow: hidden;
+}
+.sidebar-header {
+  padding: 16px;
+  border-bottom: 1px solid var(--border);
+}
+.sidebar-header h2 {
+  font-size:13px; font-weight:600; color:var(--text2);
+  text-transform:uppercase; letter-spacing:0.6px;
+  margin-bottom:10px;
+}
+
+/* Upload button */
+.upload-btn {
+  width:100%; padding:10px; border-radius:8px;
+  background: var(--accent); color:#fff;
+  border:none; cursor:pointer; font-size:13px; font-weight:600;
+  font-family:inherit; display:flex; align-items:center; justify-content:center; gap:8px;
+  transition: var(--transition);
+}
+.upload-btn:hover { background: var(--accent2); }
+.upload-btn svg { width:16px; height:16px; }
+.upload-btn input { display:none; }
+
+/* Doc list */
+.doc-list {
+  flex:1; overflow-y:auto; padding:8px;
+}
+.doc-list::-webkit-scrollbar { width:5px; }
+.doc-list::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
+
+.doc-item {
+  padding:12px; border-radius:8px; cursor:pointer;
+  transition: var(--transition); margin-bottom:4px;
+  border: 1px solid transparent;
+}
+.doc-item:hover { background:var(--surface); border-color:var(--border); }
+.doc-item.active { background:var(--accent-dim); border-color:var(--accent); }
+.doc-item-type {
+  font-size:10px; font-weight:700; text-transform:uppercase;
+  letter-spacing:0.8px; margin-bottom:4px;
+}
+.doc-item-type.PRD { color: var(--accent); }
+.doc-item-type.API_SPEC { color: var(--green); }
+.doc-item-type.DATA_DICTIONARY { color: var(--purple); }
+.doc-item-type.ARCHITECTURE { color: var(--orange); }
+.doc-item-type.WIREFRAME { color: var(--yellow); }
+.doc-item-type.GENERIC { color: var(--text2); }
+.doc-item-id {
+  font-size:12px; color:var(--text); font-family:'SF Mono','Fira Code',monospace;
+  overflow:hidden; text-overflow:ellipsis; white-space:nowrap;
+  max-width: 100%;
+}
+.doc-item-meta {
+  display:flex; align-items:center; gap:8px; margin-top:6px;
+}
+.doc-item-score {
+  font-size:11px; font-weight:700; padding:2px 6px;
+  border-radius:4px;
+}
+.doc-item-score.high { background:var(--green-dim); color:var(--green); }
+.doc-item-score.med { background:var(--yellow-dim); color:var(--yellow); }
+.doc-item-score.low { background:var(--red-dim); color:var(--red); }
+.doc-item-ready {
+  font-size:10px; font-weight:600;
+}
+.doc-item-actions {
+  display:flex; gap:4px; margin-top:6px;
+}
+.doc-item-actions button {
+  font-size:10px; padding:2px 8px; border-radius:4px;
+  background:var(--surface2); color:var(--text2); border:1px solid var(--border);
+  cursor:pointer; font-family:inherit; transition:var(--transition);
+}
+.doc-item-actions button:hover { color:var(--red); border-color:var(--red); }
+
+.sidebar-empty {
+  flex:1; display:flex; align-items:center; justify-content:center;
+  flex-direction:column; gap:8px; color:var(--text3);
+  padding:24px; text-align:center;
+}
+.sidebar-empty svg { width:40px; height:40px; opacity:0.3; }
+.sidebar-empty p { font-size:12px; }
+
+/* ── MAIN CONTENT ────────────────────────── */
+.main-content {
+  flex:1; overflow-y:auto; overflow-x:hidden;
+}
+.main-content::-webkit-scrollbar { width:7px; }
+.main-content::-webkit-scrollbar-thumb { background:var(--border); border-radius:4px; }
+
+/* ── WELCOME / UPLOAD ZONE ───────────────── */
+.welcome {
+  display:flex; flex-direction:column; align-items:center; justify-content:center;
+  height:100%; padding:40px; text-align:center;
+}
+.welcome-icon {
+  width:80px; height:80px; border-radius:20px;
+  background: linear-gradient(135deg, var(--accent-dim), var(--purple-dim));
+  display:flex; align-items:center; justify-content:center;
+  margin-bottom:24px;
+}
+.welcome-icon svg { width:40px; height:40px; color:var(--accent); }
+.welcome h2 { font-size:24px; font-weight:700; margin-bottom:8px; }
+.welcome p { color:var(--text2); font-size:14px; max-width:400px; margin-bottom:32px; }
+
+.drop-zone {
+  width:100%; max-width:500px; border:2px dashed var(--border);
+  border-radius: var(--radius-lg); padding:48px 24px;
+  text-align:center; cursor:pointer;
+  transition: var(--transition);
+  background: var(--surface);
+}
+.drop-zone:hover, .drop-zone.dragover {
+  border-color: var(--accent); background: var(--accent-dim);
+}
+.drop-zone.processing {
+  border-color: var(--yellow); pointer-events:none; opacity:0.8;
+}
+.drop-zone svg { width:40px; height:40px; color:var(--text2); margin-bottom:12px; }
+.drop-zone h3 { font-size:15px; margin-bottom:6px; }
+.drop-zone p { font-size:12px; color:var(--text3); }
+.drop-zone input { display:none; }
+
+.spinner {
+  display:inline-block; width:18px; height:18px;
+  border:2px solid var(--border); border-top-color:var(--accent);
+  border-radius:50%; animation:spin 0.6s linear infinite;
+  vertical-align:middle; margin-right:8px;
+}
+@keyframes spin { to{transform:rotate(360deg);} }
+
+/* ── DASHBOARD ───────────────────────────── */
+#dashboard { display:none; padding:24px; }
+
+/* Stats grid */
+.stats-grid {
+  display:grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap:12px; margin-bottom:24px;
+}
+.stat-card {
+  background: var(--surface); border:1px solid var(--border);
+  border-radius: var(--radius); padding:14px 16px;
+  display:flex; flex-direction:column; gap:4px;
+}
+.stat-card .stat-label {
+  font-size:10px; color:var(--text3); text-transform:uppercase;
+  letter-spacing:0.6px; font-weight:600;
+}
+.stat-card .stat-value {
+  font-size:26px; font-weight:800; line-height:1;
+}
+.stat-card .stat-value.green { color:var(--green); }
+.stat-card .stat-value.yellow { color:var(--yellow); }
+.stat-card .stat-value.red { color:var(--red); }
+.stat-card .stat-value.accent { color:var(--accent); }
+.stat-card .stat-value.purple { color:var(--purple); }
+
+/* ── TABS ────────────────────────────────── */
+.tab-row {
+  display:flex; gap:0; border-bottom:1px solid var(--border);
+  overflow-x:auto; margin-bottom:0;
+  position: sticky; top:0; z-index:10;
+  background: var(--bg);
+}
+.tab-row::-webkit-scrollbar { height:0; }
+.tab-btn {
+  padding:11px 18px; font-size:12px; cursor:pointer;
+  color:var(--text2); border:none; border-bottom:2px solid transparent;
+  white-space:nowrap; transition: var(--transition);
+  background:none; font-family:inherit; font-weight:500;
+}
+.tab-btn:hover { color:var(--text); background:var(--surface); }
+.tab-btn.active { color:var(--accent); border-bottom-color:var(--accent); font-weight:600; }
+
+.tab-panel { display:none; }
+.tab-panel.active { display:block; }
+
+.panel-box {
+  background: var(--surface); border:1px solid var(--border);
+  border-top:none; border-radius:0 0 var(--radius) var(--radius);
+  padding:20px; margin-bottom:24px;
+}
+
+/* ── TOOLBAR (download buttons row) ──────── */
+.toolbar {
+  display:flex; gap:8px; flex-wrap:wrap; margin-bottom:16px;
+}
+.tool-btn {
+  background:var(--surface2); color:var(--text2);
+  border:1px solid var(--border); border-radius:6px;
+  padding:6px 12px; font-size:11px; cursor:pointer;
+  font-family:inherit; transition: var(--transition);
+  display:inline-flex; align-items:center; gap:5px;
+}
+.tool-btn:hover { border-color:var(--accent); color:var(--accent); }
+.tool-btn svg { width:12px; height:12px; }
+
+/* ── MERMAID ─────────────────────────────── */
+.mermaid-container {
+  background:#fff; border-radius:8px; padding:20px;
+  overflow-x:auto; margin-bottom:12px;
+}
+.mermaid-container svg { max-width:100%; height:auto; }
+.diagram-title {
+  font-size:12px; font-weight:700; color:var(--text2);
+  text-transform:uppercase; letter-spacing:0.5px;
+  margin-bottom:8px;
+}
+
+/* ── CODE BLOCK ──────────────────────────── */
+.code-box {
+  background:var(--surface2); border:1px solid var(--border);
+  border-radius:8px; padding:16px 20px;
+  font-family:'SF Mono','Fira Code','JetBrains Mono',monospace;
+  font-size:12px; line-height:1.7;
+  overflow:auto; white-space:pre; color:var(--text);
+  max-height:600px;
+}
+
+/* ── JSON VIEWER ─────────────────────────── */
+.json-box {
+  background:var(--surface2); border:1px solid var(--border);
+  border-radius:8px; padding:16px 20px;
+  font-family:'SF Mono','Fira Code',monospace;
+  font-size:11px; line-height:1.5;
+  overflow:auto; max-height:600px; color:var(--text);
+  white-space:pre;
+}
+.jk { color:var(--accent); }
+.js { color:var(--green); }
+.jn { color:var(--purple); }
+.jb { color:var(--yellow); }
+.jnl { color:var(--red); }
+
+/* ── DATA TABLES ─────────────────────────── */
+.dtable {
+  width:100%; border-collapse:collapse; font-size:12px;
+}
+.dtable th {
+  text-align:left; padding:10px 14px;
+  background:var(--surface2); color:var(--text3);
+  font-weight:700; border-bottom:1px solid var(--border);
+  font-size:10px; text-transform:uppercase; letter-spacing:0.5px;
+  position:sticky; top:0;
+}
+.dtable td {
+  padding:10px 14px; border-bottom:1px solid var(--border);
+  vertical-align:top;
+}
+.dtable tr:last-child td { border-bottom:none; }
+.dtable tr:hover td { background:rgba(56,139,253,0.03); }
+.dtable-wrapper { overflow:auto; max-height:500px; border-radius:8px; border:1px solid var(--border); }
+
+/* ── BADGES ──────────────────────────────── */
+.badge {
+  display:inline-block; padding:2px 8px;
+  border-radius:10px; font-size:10px; font-weight:700;
+}
+.badge-green { background:var(--green-dim); color:var(--green); }
+.badge-yellow { background:var(--yellow-dim); color:var(--yellow); }
+.badge-red { background:var(--red-dim); color:var(--red); }
+.badge-blue { background:var(--accent-dim); color:var(--accent); }
+.badge-purple { background:var(--purple-dim); color:var(--purple); }
+.badge-orange { background:rgba(240,136,62,0.12); color:var(--orange); }
+
+/* ── SECTION TITLE ───────────────────────── */
+.sec-title {
+  font-size:12px; font-weight:700; color:var(--text2);
+  text-transform:uppercase; letter-spacing:0.5px;
+  margin:20px 0 10px 0;
+}
+.sec-title:first-child { margin-top:0; }
+
+/* ── ROADMAP ─────────────────────────────── */
+.phase-card {
+  border-left:3px solid var(--accent); padding:12px 18px;
+  margin-bottom:12px; background:var(--surface2);
+  border-radius:0 8px 8px 0;
+}
+.phase-card h4 { font-size:13px; margin-bottom:8px; font-weight:700; }
+.phase-card li {
+  font-size:12px; color:var(--text2); margin-bottom:3px;
+  list-style:none; padding-left:16px; position:relative;
+}
+.phase-card li::before {
+  content:"\2192"; color:var(--accent); position:absolute; left:0;
+  font-family:monospace;
+}
+
+/* ── SCORE RING ──────────────────────────── */
+.score-ring-wrap {
+  display:inline-flex; flex-direction:column; align-items:center; gap:6px;
+}
+.score-ring {
+  width:90px; height:90px; position:relative;
+  display:flex; align-items:center; justify-content:center;
+}
+.score-ring svg { transform:rotate(-90deg); }
+.score-ring .score-num {
+  position:absolute; font-size:22px; font-weight:800;
+}
+.score-ring-label { font-size:11px; color:var(--text3); }
+
+/* ── ISSUE ITEMS ─────────────────────────── */
+.issue-item {
+  padding:10px 14px; border-left:3px solid var(--yellow);
+  background:var(--yellow-dim); margin-bottom:6px;
+  border-radius:0 6px 6px 0; font-size:12px;
+}
+.issue-item.blocking { border-left-color:var(--red); background:var(--red-dim); }
+
+/* ── EMPTY STATE ─────────────────────────── */
+.empty-pane {
+  text-align:center; padding:40px; color:var(--text3);
+  font-size:13px;
+}
+
+/* ── TOAST ───────────────────────────────── */
+.toast-container {
+  position:fixed; bottom:20px; right:20px; z-index:999;
+  display:flex; flex-direction:column-reverse; gap:8px;
+}
+.toast {
+  background:var(--surface); border:1px solid var(--border);
+  border-radius:8px; padding:12px 16px; font-size:12px;
+  box-shadow:var(--shadow); min-width:260px;
+  animation: toast-in 0.3s ease;
+}
+.toast.success { border-left:3px solid var(--green); }
+.toast.error { border-left:3px solid var(--red); }
+.toast.info { border-left:3px solid var(--accent); }
+@keyframes toast-in { from{opacity:0;transform:translateY(10px);} to{opacity:1;transform:translateY(0);} }
+
+/* ── RESPONSIVE ──────────────────────────── */
+@media(max-width:768px) {
+  .sidebar { display:none; }
+  .stats-grid { grid-template-columns: repeat(auto-fill, minmax(120px,1fr)); }
+}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-icon">S</div>
+    <h1><span>Spec</span>-OS</h1>
+  </div>
+  <div class="header-right">
+    <span class="health-dot" id="healthDot" title="API healthy"></span>
+    <span class="version-badge">v2.0.0</span>
+  </div>
+</header>
+
+<div class="app">
+
+  <!-- ═══════ SIDEBAR ═══════ -->
+  <aside class="sidebar">
+    <div class="sidebar-header">
+      <h2>Documents</h2>
+      <label class="upload-btn" id="sidebarUploadBtn">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        Upload MHTML
+        <input type="file" id="sidebarFileInput" accept=".mhtml,.mht,.html">
+      </label>
+    </div>
+    <div class="doc-list" id="docList">
+      <div class="sidebar-empty" id="sidebarEmpty">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14.5 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+        <p>No documents yet.<br>Upload an MHTML file to begin.</p>
+      </div>
+    </div>
+  </aside>
+
+  <!-- ═══════ MAIN ═══════ -->
+  <main class="main-content" id="mainContent">
+
+    <!-- WELCOME -->
+    <div class="welcome" id="welcomePane">
+      <div class="welcome-icon">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14.5 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+      </div>
+      <h2>Welcome to Spec-OS</h2>
+      <p>Upload an MHTML document to parse, extract entities, build schemas, generate DDL, and produce an executable specification.</p>
+      <div class="drop-zone" id="dropZone">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+        <h3 id="dropLabel">Drop your MHTML file here, or click to browse</h3>
+        <p>.mhtml, .mht, .html supported</p>
+        <input type="file" id="dropFileInput" accept=".mhtml,.mht,.html">
+      </div>
+    </div>
+
+    <!-- DASHBOARD (hidden until doc selected) -->
+    <div id="dashboard">
+
+      <!-- Doc header -->
+      <div style="display:flex;align-items:center;gap:12px;margin-bottom:20px;flex-wrap:wrap">
+        <div id="dashDocType" class="badge" style="font-size:12px;padding:4px 12px;"></div>
+        <code id="dashDocId" style="font-size:12px;color:var(--text2);font-family:'SF Mono',monospace;"></code>
+        <div style="flex:1"></div>
+        <button class="tool-btn" id="dashDeleteBtn" style="color:var(--red);border-color:var(--red-dim);">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 01-2 2H7a2 2 0 01-2-2V6m3 0V4a2 2 0 012-2h4a2 2 0 012 2v2"/></svg>
+          Delete
+        </button>
+      </div>
+
+      <!-- Stats -->
+      <div class="stats-grid" id="statsGrid"></div>
+
+      <!-- Tabs -->
+      <div class="tab-row" id="tabRow"></div>
+      <div class="panel-box">
+        <div id="pGraph"    class="tab-panel"></div>
+        <div id="pDag"      class="tab-panel"></div>
+        <div id="pSchema"   class="tab-panel"></div>
+        <div id="pDDL"      class="tab-panel"></div>
+        <div id="pAPIs"     class="tab-panel"></div>
+        <div id="pVars"     class="tab-panel"></div>
+        <div id="pRoadmap"  class="tab-panel"></div>
+        <div id="pTrace"    class="tab-panel"></div>
+        <div id="pHealth"   class="tab-panel"></div>
+        <div id="pSpec"     class="tab-panel"></div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toasts"></div>
+
+<script>
+/* ================================================================
+   STATE
+   ================================================================ */
+let currentDocId = null;
+const API = '';
+
+/* ================================================================
+   MERMAID INIT
+   ================================================================ */
+mermaid.initialize({
+  startOnLoad: false,
+  theme: 'default',
+  securityLevel: 'loose',
+  flowchart: { curve: 'basis', htmlLabels: true },
+});
+
+/* ================================================================
+   TOAST NOTIFICATIONS
+   ================================================================ */
+function toast(msg, type='info') {
+  const el = document.createElement('div');
+  el.className = `toast ${type}`;
+  el.textContent = msg;
+  document.getElementById('toasts').appendChild(el);
+  setTimeout(() => el.remove(), 4000);
+}
+
+/* ================================================================
+   HEALTH CHECK
+   ================================================================ */
+async function checkHealth() {
+  try {
+    const r = await fetch(API + '/health');
+    const d = await r.json();
+    const dot = document.getElementById('healthDot');
+    dot.style.background = d.status === 'ok' ? 'var(--green)' : 'var(--red)';
+    dot.title = d.status === 'ok' ? 'API healthy' : 'API unhealthy';
+  } catch {
+    document.getElementById('healthDot').style.background = 'var(--red)';
+  }
+}
+checkHealth();
+setInterval(checkHealth, 30000);
+
+/* ================================================================
+   DOCUMENT LIST (SIDEBAR)
+   ================================================================ */
+async function loadDocList() {
+  try {
+    const res = await fetch(API + '/api/docs');
+    const docs = await res.json();
+    const list = document.getElementById('docList');
+    const empty = document.getElementById('sidebarEmpty');
+
+    if (!docs.length) {
+      empty.style.display = 'flex';
+      list.querySelectorAll('.doc-item').forEach(el => el.remove());
+      return;
+    }
+    empty.style.display = 'none';
+
+    // Remove old items
+    list.querySelectorAll('.doc-item').forEach(el => el.remove());
+
+    for (const doc of docs) {
+      const el = document.createElement('div');
+      el.className = 'doc-item' + (doc.doc_id === currentDocId ? ' active' : '');
+      el.dataset.id = doc.doc_id;
+
+      const score = doc.spec_score ?? 0;
+      const sc = score >= 80 ? 'high' : score >= 50 ? 'med' : 'low';
+      const dt = doc.doc_type || 'GENERIC';
+
+      el.innerHTML = `
+        <div class="doc-item-type ${dt}">${esc(dt)}</div>
+        <div class="doc-item-id" title="${esc(doc.doc_id)}">${esc(doc.doc_id.substring(0,8))}...</div>
+        <div class="doc-item-meta">
+          <span class="doc-item-score ${sc}">${score}</span>
+          <span class="doc-item-ready" style="color:${doc.ready_for_codegen?'var(--green)':'var(--text3)'}">${doc.ready_for_codegen?'Codegen Ready':'Draft'}</span>
+        </div>
+        <div class="doc-item-actions">
+          <button onclick="event.stopPropagation();deleteDoc('${esc(doc.doc_id)}')">Delete</button>
+        </div>
+      `;
+      el.addEventListener('click', () => selectDoc(doc.doc_id));
+      list.appendChild(el);
+    }
+  } catch (err) {
+    console.error('Failed to load doc list:', err);
+  }
+}
+
+loadDocList();
+
+/* ================================================================
+   SELECT A DOCUMENT
+   ================================================================ */
+async function selectDoc(docId) {
+  currentDocId = docId;
+
+  // Update sidebar active
+  document.querySelectorAll('.doc-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.id === docId);
+  });
+
+  // Switch to dashboard
+  document.getElementById('welcomePane').style.display = 'none';
+  document.getElementById('dashboard').style.display = 'block';
+
+  // Load summary
+  try {
+    const res = await fetch(API + `/api/docs/${docId}/summary`);
+    const s = await res.json();
+    renderDashboard(s);
+  } catch (err) {
+    toast('Failed to load document: ' + err.message, 'error');
+  }
+}
+
+/* ================================================================
+   DELETE A DOCUMENT
+   ================================================================ */
+async function deleteDoc(docId) {
+  if (!confirm(`Delete document ${docId.substring(0,8)}...?`)) return;
+  try {
+    await fetch(API + `/api/docs/${docId}`, { method: 'DELETE' });
+    toast('Document deleted', 'success');
+    if (currentDocId === docId) {
+      currentDocId = null;
+      document.getElementById('welcomePane').style.display = '';
+      document.getElementById('dashboard').style.display = 'none';
+    }
+    loadDocList();
+  } catch (err) {
+    toast('Delete failed: ' + err.message, 'error');
+  }
+}
+
+/* ================================================================
+   FILE UPLOAD HANDLING
+   ================================================================ */
+// Sidebar upload
+const sidebarInput = document.getElementById('sidebarFileInput');
+sidebarInput.addEventListener('change', () => {
+  if (sidebarInput.files.length) uploadFile(sidebarInput.files[0]);
+  sidebarInput.value = '';
+});
+
+// Drop zone (welcome)
+const dropZone = document.getElementById('dropZone');
+const dropInput = document.getElementById('dropFileInput');
+const dropLabel = document.getElementById('dropLabel');
+
+dropZone.addEventListener('click', () => dropInput.click());
+dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('dragover'); });
+dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragover'));
+dropZone.addEventListener('drop', e => {
+  e.preventDefault(); dropZone.classList.remove('dragover');
+  if (e.dataTransfer.files.length) uploadFile(e.dataTransfer.files[0]);
+});
+dropInput.addEventListener('change', () => {
+  if (dropInput.files.length) uploadFile(dropInput.files[0]);
+  dropInput.value = '';
+});
+
+// Also allow drag-drop on main content
+const mainContent = document.getElementById('mainContent');
+mainContent.addEventListener('dragover', e => e.preventDefault());
+mainContent.addEventListener('drop', e => {
+  e.preventDefault();
+  if (e.dataTransfer.files.length) uploadFile(e.dataTransfer.files[0]);
+});
+
+async function uploadFile(file) {
+  dropZone.classList.add('processing');
+  dropLabel.innerHTML = '<span class="spinner"></span> Processing ' + esc(file.name) + '...';
+  toast('Uploading ' + file.name + '...', 'info');
+
+  const form = new FormData();
+  form.append('file', file);
+
+  try {
+    const res = await fetch(API + '/api/ingest', { method: 'POST', body: form });
+    const data = await res.json();
+    if (data.status === 'processed') {
+      currentDocId = data.doc_id;
+      toast('Document processed successfully!', 'success');
+      await loadDocList();
+      selectDoc(data.doc_id);
+    } else {
+      toast('Error: ' + (data.error || 'Unknown error'), 'error');
+      dropLabel.textContent = 'Error processing file. Try again.';
+    }
+  } catch (err) {
+    toast('Network error: ' + err.message, 'error');
+    dropLabel.textContent = 'Upload failed. Try again.';
+  } finally {
+    dropZone.classList.remove('processing');
+    dropLabel.textContent = 'Drop your MHTML file here, or click to browse';
+  }
+}
+
+/* ================================================================
+   RENDER DASHBOARD
+   ================================================================ */
+function renderDashboard(s) {
+  // Doc header
+  const dt = s.doc_type || 'GENERIC';
+  const dtBadge = document.getElementById('dashDocType');
+  dtBadge.textContent = dt;
+  dtBadge.className = 'badge badge-' + ({PRD:'blue',API_SPEC:'green',DATA_DICTIONARY:'purple',ARCHITECTURE:'orange',WIREFRAME:'yellow'}[dt]||'blue');
+  document.getElementById('dashDocId').textContent = s.doc_id;
+
+  // Delete button
+  document.getElementById('dashDeleteBtn').onclick = () => deleteDoc(s.doc_id);
+
+  // Stats
+  const score = s.spec_score ?? 0;
+  const sc = score >= 80 ? 'green' : score >= 50 ? 'yellow' : 'red';
+  document.getElementById('statsGrid').innerHTML = `
+    <div class="stat-card"><span class="stat-label">Spec Score</span><span class="stat-value ${sc}">${score}</span></div>
+    <div class="stat-card"><span class="stat-label">Codegen Ready</span><span class="stat-value ${s.ready_for_codegen?'green':'yellow'}">${s.ready_for_codegen?'Yes':'No'}</span></div>
+    <div class="stat-card"><span class="stat-label">Graph Nodes</span><span class="stat-value accent">${s.graph_nodes??0}</span></div>
+    <div class="stat-card"><span class="stat-label">Graph Edges</span><span class="stat-value">${s.graph_edges??0}</span></div>
+    <div class="stat-card"><span class="stat-label">Schema Models</span><span class="stat-value purple">${s.schema_models??0}</span></div>
+    <div class="stat-card"><span class="stat-label">Variables</span><span class="stat-value purple">${s.variables??0}</span></div>
+    <div class="stat-card"><span class="stat-label">Metrics</span><span class="stat-value accent">${s.metrics??0}</span></div>
+    <div class="stat-card"><span class="stat-label">APIs</span><span class="stat-value">${s.apis??0}</span></div>
+  `;
+
+  // Tabs
+  const tabs = [
+    { id:'pGraph',   label:'Document Graph',  icon:'share-2' },
+    { id:'pDag',     label:'Computation DAG',  icon:'git-branch' },
+    { id:'pSchema',  label:'Schema',           icon:'database' },
+    { id:'pDDL',     label:'DDL SQL',           icon:'code' },
+    { id:'pAPIs',    label:'API Contracts',     icon:'globe' },
+    { id:'pVars',    label:'Variables',         icon:'hash' },
+    { id:'pRoadmap', label:'Roadmap',           icon:'map' },
+    { id:'pTrace',   label:'Traceability',      icon:'link' },
+    { id:'pHealth',  label:'Validation',        icon:'shield' },
+    { id:'pSpec',    label:'System Spec',       icon:'file-text' },
+  ];
+
+  const tabRow = document.getElementById('tabRow');
+  tabRow.innerHTML = tabs.map((t, i) =>
+    `<button class="tab-btn${i===0?' active':''}" data-target="${t.id}">${t.label}</button>`
+  ).join('');
+
+  tabRow.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      tabRow.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById(btn.dataset.target).classList.add('active');
+    });
+  });
+
+  document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+  document.getElementById(tabs[0].id).classList.add('active');
+
+  // Load data
+  Promise.all([
+    loadMermaid(), loadDDL(), loadSchema(), loadAPIs(),
+    loadVariables(), loadRoadmap(), loadTraceability(),
+    loadValidation(), loadSystemSpec()
+  ]);
+}
+
+/* ================================================================
+   TAB LOADERS
+   ================================================================ */
+
+async function loadMermaid() {
+  const data = await fetchJson(`/api/docs/${currentDocId}/mermaid`);
+  if (!data) { document.getElementById('pGraph').innerHTML = '<div class="empty-pane">No graph data.</div>'; return; }
+
+  document.getElementById('pGraph').innerHTML = `
+    <div class="toolbar">
+      <button class="tool-btn" onclick="downloadArtifact('graph','graph.json')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Graph JSON</button>
+      <button class="tool-btn" onclick="downloadArtifact('mermaid','mermaid.json')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Mermaid JSON</button>
+    </div>
+    <div class="diagram-title">Entity-Relationship Graph</div>
+    <div class="mermaid-container"><pre class="mermaid">${esc(data.graph_mermaid||'')}</pre></div>
+  `;
+
+  document.getElementById('pDag').innerHTML = `
+    <div class="toolbar">
+      <button class="tool-btn" onclick="downloadArtifact('computation','computation_graph.json')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Computation JSON</button>
+      <button class="tool-btn" onclick="downloadArtifact('execution-plan','execution_plan.json')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Execution Plan</button>
+    </div>
+    <div class="diagram-title">Computation DAG (Metrics &larr; Variables)</div>
+    <div class="mermaid-container"><pre class="mermaid">${esc(data.computation_mermaid||'')}</pre></div>
+  `;
+
+  try { await mermaid.run({ nodes: document.querySelectorAll('.mermaid') }); } catch(e) { console.warn('Mermaid render:', e); }
+}
+
+async function loadDDL() {
+  const el = document.getElementById('pDDL');
+  try {
+    const res = await fetch(API + `/api/docs/${currentDocId}/ddl`);
+    if (!res.ok) { el.innerHTML = '<div class="empty-pane">No DDL generated.</div>'; return; }
+    const ddl = await res.text();
+    el.innerHTML = `
+      <div class="toolbar">
+        <button class="tool-btn" onclick="downloadText('ddl','starter.sql')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Download SQL</button>
+        <button class="tool-btn" id="copyDdlBtn" onclick="copyCode('ddlCode',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>Copy</button>
+      </div>
+      <div class="code-box" id="ddlCode">${highlightSQL(ddl)}</div>
+    `;
+  } catch { el.innerHTML = '<div class="empty-pane">No DDL generated.</div>'; }
+}
+
+async function loadSchema() {
+  const data = await fetchJson(`/api/docs/${currentDocId}/canonical-schema`);
+  const el = document.getElementById('pSchema');
+  if (!data) { el.innerHTML = '<div class="empty-pane">No schema generated.</div>'; return; }
+
+  let html = `<div class="toolbar">
+    <button class="tool-btn" onclick="downloadArtifact('canonical-schema','canonical_schema.json')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Schema JSON</button>
+    <button class="tool-btn" onclick="downloadArtifact('schema','raw_schema.json')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Raw Schema</button>
+  </div>`;
+
+  if (data.entities?.length) {
+    html += '<div class="sec-title">Entities</div><div class="dtable-wrapper"><table class="dtable"><thead><tr><th>Name</th><th>Type</th><th>Fields</th></tr></thead><tbody>';
+    for (const e of data.entities) {
+      const fields = (e.fields||[]).map(f =>
+        `<span class="badge badge-blue">${esc(f.name)}</span> <span style="color:var(--text3);font-size:10px">${esc(f.data_type||'')}</span>`
+      ).join(' ');
+      html += `<tr><td><strong>${esc(e.name||'')}</strong></td><td><span class="badge badge-purple">${esc(e.model_type||'')}</span></td><td>${fields||'--'}</td></tr>`;
+    }
+    html += '</tbody></table></div>';
+  }
+
+  if (data.variables?.length) {
+    html += '<div class="sec-title">Variables</div><div class="dtable-wrapper"><table class="dtable"><thead><tr><th>Name</th><th>Type</th><th>Source</th></tr></thead><tbody>';
+    for (const v of data.variables) {
+      html += `<tr><td>${esc(v.name||'')}</td><td><span class="badge badge-yellow">${esc(v.variable_type||'')}</span></td><td>${esc(v.source||'--')}</td></tr>`;
+    }
+    html += '</tbody></table></div>';
+  }
+
+  el.innerHTML = html;
+}
+
+async function loadAPIs() {
+  const data = await fetchJson(`/api/docs/${currentDocId}/api-contracts`);
+  const el = document.getElementById('pAPIs');
+  if (!data || !data.length) {
+    el.innerHTML = '<div class="empty-pane">No API contracts extracted from this document.</div>';
+    return;
+  }
+  let html = `<div class="toolbar">
+    <button class="tool-btn" onclick="downloadArtifact('api-contracts','api_contracts.json')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>API Contracts</button>
+  </div>`;
+  html += '<div class="dtable-wrapper"><table class="dtable"><thead><tr><th>Method</th><th>Endpoint</th><th>Request</th><th>Response</th></tr></thead><tbody>';
+  for (const api of data) {
+    const mc = {GET:'badge-green',POST:'badge-blue',PUT:'badge-yellow',DELETE:'badge-red'}[api.method]||'badge-blue';
+    html += `<tr>
+      <td><span class="badge ${mc}">${esc(api.method||'GET')}</span></td>
+      <td><code style="font-size:11px">${esc(api.endpoint||'')}</code></td>
+      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis"><code style="font-size:10px;color:var(--text3)">${esc(JSON.stringify(api.request||{}))}</code></td>
+      <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis"><code style="font-size:10px;color:var(--text3)">${esc(JSON.stringify(api.response||{}))}</code></td>
+    </tr>`;
+  }
+  html += '</tbody></table></div>';
+  el.innerHTML = html;
+}
+
+async function loadVariables() {
+  const data = await fetchJson(`/api/docs/${currentDocId}/variables`);
+  const el = document.getElementById('pVars');
+  if (!data) { el.innerHTML = '<div class="empty-pane">No variables.</div>'; return; }
+  const vars = data.variables || [];
+  let html = `<div class="toolbar">
+    <button class="tool-btn" onclick="downloadArtifact('variables','variable_registry.json')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Registry</button>
+    <button class="tool-btn" onclick="downloadArtifact('variable-mapping','variable_mapping.json')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Mapping</button>
+  </div>`;
+  if (!vars.length) { html += '<div class="empty-pane">No variables extracted.</div>'; }
+  else {
+    html += '<div class="dtable-wrapper"><table class="dtable"><thead><tr><th>Canonical Name</th><th>Raw Name</th><th>Type</th><th>Source</th></tr></thead><tbody>';
+    for (const v of vars) {
+      html += `<tr>
+        <td><strong>${esc(v.name||'')}</strong></td>
+        <td>${esc(v.raw_name||(v.raw_names||[]).join(', ')||'--')}</td>
+        <td><span class="badge badge-purple">${esc(v.variable_type||'unknown')}</span></td>
+        <td>${esc(v.source||'--')}</td>
+      </tr>`;
+    }
+    html += '</tbody></table></div>';
+  }
+  el.innerHTML = html;
+}
+
+async function loadRoadmap() {
+  const data = await fetchJson(`/api/docs/${currentDocId}/roadmap`);
+  const el = document.getElementById('pRoadmap');
+  if (!data) { el.innerHTML = '<div class="empty-pane">No roadmap data.</div>'; return; }
+
+  const colors = ['var(--accent)','var(--green)','var(--purple)','var(--yellow)','var(--orange)'];
+  let html = `<div class="toolbar">
+    <button class="tool-btn" onclick="downloadArtifact('roadmap','roadmap.json')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Download Roadmap</button>
+  </div>`;
+  (data.phases||[]).forEach((p, i) => {
+    html += `<div class="phase-card" style="border-left-color:${colors[i%5]}">
+      <h4>${esc(p.phase)}</h4><ul>`;
+    (p.deliverables||[]).forEach(d => { html += `<li>${esc(d)}</li>`; });
+    html += '</ul></div>';
+  });
+  el.innerHTML = html;
+}
+
+async function loadTraceability() {
+  const data = await fetchJson(`/api/docs/${currentDocId}/traceability`);
+  const el = document.getElementById('pTrace');
+  if (!data || !data.length) { el.innerHTML = '<div class="empty-pane">No traceability rows.</div>'; return; }
+
+  let html = `<div class="toolbar">
+    <button class="tool-btn" onclick="downloadArtifact('traceability','traceability.json')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Download Matrix</button>
+  </div>`;
+  html += '<div class="dtable-wrapper"><table class="dtable"><thead><tr><th>Source Section</th><th>Artifact Type</th><th>Artifact Name</th><th>Status</th></tr></thead><tbody>';
+  for (const row of data) {
+    const sc = row.status === 'extracted' ? 'badge-green' : 'badge-yellow';
+    html += `<tr>
+      <td>${esc(row.source_section||'')}</td>
+      <td><span class="badge badge-blue">${esc(row.artifact_type||'')}</span></td>
+      <td>${esc(row.artifact_name||'')}</td>
+      <td><span class="badge ${sc}">${esc(row.status||'')}</span></td>
+    </tr>`;
+  }
+  html += '</tbody></table></div>';
+  el.innerHTML = html;
+}
+
+async function loadValidation() {
+  const [completeness, reconciliation, score] = await Promise.all([
+    fetchJson(`/api/docs/${currentDocId}/completeness`),
+    fetchJson(`/api/docs/${currentDocId}/reconciliation`),
+    fetchJson(`/api/docs/${currentDocId}/score`),
+  ]);
+  const el = document.getElementById('pHealth');
+
+  let html = `<div class="toolbar">
+    <button class="tool-btn" onclick="downloadArtifact('reconciliation','reconciliation.json')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Reconciliation</button>
+    <button class="tool-btn" onclick="downloadArtifact('completeness','completeness.json')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Completeness</button>
+  </div>`;
+
+  // Score ring
+  const s = score?.score ?? 0;
+  const color = s >= 80 ? 'var(--green)' : s >= 50 ? 'var(--yellow)' : 'var(--red)';
+  const dash = (s / 100) * 283;
+  html += `<div style="display:flex;gap:32px;align-items:flex-start;margin-bottom:24px;flex-wrap:wrap">
+    <div class="score-ring-wrap">
+      <div class="score-ring">
+        <svg width="90" height="90">
+          <circle cx="45" cy="45" r="40" fill="none" stroke="var(--border)" stroke-width="7"/>
+          <circle cx="45" cy="45" r="40" fill="none" stroke="${color}" stroke-width="7" stroke-dasharray="${dash} 283" stroke-linecap="round"/>
+        </svg>
+        <span class="score-num" style="color:${color}">${s}</span>
+      </div>
+      <span class="score-ring-label">Spec Quality</span>
+    </div>
+    <div style="flex:1;min-width:180px">`;
+
+  if (completeness?.completeness) {
+    const c = completeness.completeness;
+    html += `<div class="dtable-wrapper"><table class="dtable"><thead><tr><th>Dimension</th><th>Count</th></tr></thead><tbody>
+      <tr><td>Variables</td><td>${c.variables}</td></tr>
+      <tr><td>Schema Models</td><td>${c.schema}</td></tr>
+      <tr><td>APIs</td><td>${c.apis}</td></tr>
+      <tr><td>Metrics</td><td>${c.metrics}</td></tr>
+    </tbody></table></div>`;
+  }
+  html += '</div></div>';
+
+  if (completeness?.blocking_issues?.length) {
+    html += '<div class="sec-title">Blocking Issues</div>';
+    for (const b of completeness.blocking_issues) html += `<div class="issue-item blocking">${esc(b)}</div>`;
+  }
+  if (completeness?.warnings?.length) {
+    html += '<div class="sec-title">Warnings</div>';
+    for (const w of completeness.warnings) html += `<div class="issue-item">${esc(w)}</div>`;
+  }
+  const issues = reconciliation?.issues || [];
+  if (issues.length) {
+    html += '<div class="sec-title">Reconciliation Issues</div>';
+    for (const i of issues) html += `<div class="issue-item"><span class="badge badge-yellow">${esc(i.type||'')}</span> ${esc(JSON.stringify(i))}</div>`;
+  }
+  if (!completeness?.blocking_issues?.length && !completeness?.warnings?.length && !issues.length) {
+    html += '<div style="padding:20px;text-align:center;color:var(--green);font-weight:700;font-size:13px">All checks passed.</div>';
+  }
+
+  el.innerHTML = html;
+}
+
+async function loadSystemSpec() {
+  const data = await fetchJson(`/api/docs/${currentDocId}/spec`);
+  const el = document.getElementById('pSpec');
+  if (!data) { el.innerHTML = '<div class="empty-pane">No system spec.</div>'; return; }
+  el.innerHTML = `
+    <div class="toolbar">
+      <button class="tool-btn" onclick="downloadArtifact('spec','system_spec.json')"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>Download Full Spec</button>
+      <button class="tool-btn" onclick="copyCode('specCode',this)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 01-2-2V4a2 2 0 012-2h9a2 2 0 012 2v1"/></svg>Copy</button>
+    </div>
+    <div class="json-box" id="specCode">${syntaxHL(data)}</div>
+  `;
+}
+
+/* ================================================================
+   HELPERS
+   ================================================================ */
+async function fetchJson(path) {
+  try {
+    const r = await fetch(API + path);
+    if (!r.ok) return null;
+    return await r.json();
+  } catch { return null; }
+}
+
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = String(s ?? '');
+  return d.innerHTML;
+}
+
+function syntaxHL(obj) {
+  const json = JSON.stringify(obj, null, 2);
+  return json.replace(/("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g, m => {
+    let c = 'jn';
+    if (/^"/.test(m)) c = /:$/.test(m) ? 'jk' : 'js';
+    else if (/true|false/.test(m)) c = 'jb';
+    else if (/null/.test(m)) c = 'jnl';
+    return `<span class="${c}">${esc(m)}</span>`;
+  });
+}
+
+function highlightSQL(sql) {
+  const kw = ['CREATE','TABLE','IF','NOT','EXISTS','PRIMARY','KEY','DEFAULT','EXTENSION','ALTER',
+    'ADD','CONSTRAINT','FOREIGN','REFERENCES','INDEX','ON','NULL','WITH','TIME','ZONE',
+    'UUID','TEXT','BOOLEAN','DECIMAL','TIMESTAMP','INTEGER','VARCHAR','SERIAL','BIGINT','FLOAT','DATE'];
+  let out = esc(sql);
+  for (const k of kw) out = out.replace(new RegExp('\\b'+k+'\\b','g'), `<span style="color:var(--accent)">${k}</span>`);
+  out = out.replace(/(--[^\n]*)/g, '<span style="color:var(--text3)">$1</span>');
+  return out;
+}
+
+async function downloadArtifact(endpoint, filename) {
+  const res = await fetch(API + `/api/docs/${currentDocId}/${endpoint}`);
+  const text = await res.text();
+  downloadBlob(text, filename, res.headers.get('content-type')||'application/json');
+}
+
+async function downloadText(endpoint, filename) {
+  const res = await fetch(API + `/api/docs/${currentDocId}/${endpoint}`);
+  const text = await res.text();
+  downloadBlob(text, filename, 'text/plain');
+}
+
+function downloadBlob(content, filename, type) {
+  const blob = new Blob([content], { type });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
+
+function copyCode(elId, btn) {
+  const code = document.getElementById(elId);
+  if (!code) return;
+  navigator.clipboard.writeText(code.textContent).then(() => {
+    const orig = btn.innerHTML;
+    btn.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="width:12px;height:12px"><polyline points="20 6 9 17 4 12"/></svg>Copied!';
+    setTimeout(() => { btn.innerHTML = orig; }, 2000);
+  });
+}
+</script>
+</body>
+</html>

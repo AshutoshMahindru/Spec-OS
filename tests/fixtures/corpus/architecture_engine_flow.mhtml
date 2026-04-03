@@ -1,0 +1,18 @@
+From: <Saved by Spec-OS>
+MIME-Version: 1.0
+Content-Type: multipart/related; boundary=----=_NextPart_000_0002;
+
+------=_NextPart_000_0002
+Content-Type: text/html; charset=us-ascii
+Content-Transfer-Encoding: 7bit
+
+<html><body>
+<h1>Layered Architecture Overview</h1>
+<p>Canonical Engine Flow for the planning system.</p>
+<h2>Runtime Layers</h2>
+<p>Input Layer feeds Simulation Engine</p>
+<p>Simulation Engine uses Validation Service</p>
+<p>Validation Service outputs to Analytics Engine</p>
+<p>Analytics Engine drives Operations Dashboard</p>
+</body></html>
+------=_NextPart_000_0002--

@@ -1,0 +1,18 @@
+From: <Saved by Spec-OS>
+MIME-Version: 1.0
+Content-Type: multipart/related; boundary=----=_NextPart_000_0003;
+
+------=_NextPart_000_0003
+Content-Type: text/html; charset=us-ascii
+Content-Transfer-Encoding: 7bit
+
+<html><body>
+<h1>Schema Conventions</h1>
+<p>Total Tables: 12 with row-level security enabled.</p>
+<h2>Data Model Summary</h2>
+<p>Planning Grain Key: company_id + scenario_id + assumption_set_id + planning_period_id</p>
+<p>Audit Fields: created_by, updated_by, created_at, updated_at</p>
+<p>tenant_id is required for workspace isolation.</p>
+<p>uuid primary keys are required for all core models.</p>
+</body></html>
+------=_NextPart_000_0003--
