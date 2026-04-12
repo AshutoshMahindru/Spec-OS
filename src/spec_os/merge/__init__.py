@@ -1,4 +1,11 @@
-"""Multi-document merge: graphs, variable registries, and schemas."""
+"""Multi-document merge: graphs, variable registries, and schemas.
+
+Change E: merge functions now detect and report conflicts instead of
+silently swallowing them.  ``merge_schemas`` deduplicates APIs, detects
+field-type conflicts, and returns a ``conflicts`` list alongside the
+merged data.  ``merge_all_docs`` passes these conflicts through to
+reconciliation.
+"""
 
 from __future__ import annotations
 
@@ -47,9 +54,14 @@ def merge_variable_registries(registries: list[dict]) -> dict:
     return {"variables": list(merged.values())}
 
 
-def merge_schemas(schemas: list[dict]) -> dict:
+def merge_schemas(schemas: list[dict]) -> tuple[dict, list[dict]]:
+    """Merge schemas and return ``(merged_schema, conflicts)``.
+
+    Change E: detects field-type conflicts and deduplicates APIs.
+    """
     merged: dict = {"models": [], "apis": [], "variables": []}
     model_map: dict[str, dict] = {}
+    conflicts: list[dict] = []
 
     for s in schemas:
         for m in s.get("models", []):
@@ -61,13 +73,52 @@ def merge_schemas(schemas: list[dict]) -> dict:
             else:
                 existing_fields = {f.get("name"): f for f in model_map[name].get("fields", [])}
                 for f in m.get("fields", []):
-                    if f.get("name") not in existing_fields:
+                    fname = f.get("name")
+                    if fname not in existing_fields:
                         model_map[name].setdefault("fields", []).append(f)
-        merged["apis"].extend(s.get("apis", []))
+                    else:
+                        # Change E: detect field-type conflicts.
+                        existing = existing_fields[fname]
+                        if (
+                            f.get("data_type") != existing.get("data_type")
+                            or f.get("nullable") != existing.get("nullable")
+                        ):
+                            conflicts.append({
+                                "type": "CONFLICTING_FIELD_TYPE",
+                                "model": name,
+                                "field": fname,
+                                "existing": {
+                                    "data_type": existing.get("data_type"),
+                                    "nullable": existing.get("nullable"),
+                                },
+                                "incoming": {
+                                    "data_type": f.get("data_type"),
+                                    "nullable": f.get("nullable"),
+                                },
+                            })
+
+        # Change E: deduplicate APIs by (endpoint, method).
+        seen_apis: set[tuple[str, str]] = set()
+        for existing_api in merged.get("apis", []):
+            key = (normalize_name(existing_api.get("endpoint", "")), existing_api.get("method", "GET"))
+            seen_apis.add(key)
+
+        for api in s.get("apis", []):
+            api_key = (normalize_name(api.get("endpoint", "")), api.get("method", "GET"))
+            if api_key in seen_apis:
+                conflicts.append({
+                    "type": "DUPLICATE_API",
+                    "endpoint": api.get("endpoint"),
+                    "method": api.get("method", "GET"),
+                })
+            else:
+                merged["apis"].append(api)
+                seen_apis.add(api_key)
+
         merged["variables"].extend(s.get("variables", []))
 
     merged["models"] = list(model_map.values())
-    return merged
+    return merged, conflicts
 
 
 def merge_all_docs(doc_results: list[dict]) -> dict:
@@ -81,12 +132,18 @@ def merge_all_docs(doc_results: list[dict]) -> dict:
 
     merged_graph = merge_graphs(graphs)
     merged_registry = merge_variable_registries(registries)
-    merged_schema = merge_schemas(schemas)
+    merged_schema, merge_conflicts = merge_schemas(schemas)
 
     computation_graph = build_computation_graph(merged_graph)
     execution_plan = build_execution_plan(computation_graph)
     api_contracts = build_api_contracts_from_graph(merged_graph)
-    reconciliation = reconcile_spec(merged_graph, merged_schema, merged_registry, api_contracts)
+    reconciliation = reconcile_spec(
+        merged_graph,
+        merged_schema,
+        merged_registry,
+        api_contracts,
+        merge_conflicts=merge_conflicts,
+    )
 
     return {
         "graph": merged_graph,
@@ -96,4 +153,5 @@ def merge_all_docs(doc_results: list[dict]) -> dict:
         "execution_plan": execution_plan,
         "api_contracts": api_contracts,
         "reconciliation": reconciliation,
+        "merge_conflicts": merge_conflicts,
     }

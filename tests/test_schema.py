@@ -56,11 +56,23 @@ class TestDDLGeneration:
         graph = extract_prd_graph(structured, "d1")
         schema = build_data_schema_from_graph(graph, "PRD")
         ddl = generate_starter_ddl(graph, schema=schema, doc_type="PRD")
-        assert "CREATE TABLE IF NOT EXISTS planning_context" in ddl
-        assert "CREATE TABLE IF NOT EXISTS driver_assumption" in ddl
-        assert "CREATE TABLE IF NOT EXISTS computed_metric" in ddl
+        assert 'CREATE TABLE IF NOT EXISTS "planning_context"' in ddl
+        assert 'CREATE TABLE IF NOT EXISTS "driver_assumption"' in ddl
+        assert 'CREATE TABLE IF NOT EXISTS "computed_metric"' in ddl
 
     def test_fallback_ddl_for_generic(self):
         graph = {"nodes": [{"id": "doc_1", "type": "Document"}], "edges": []}
         ddl = generate_starter_ddl(graph)
-        assert "CREATE TABLE IF NOT EXISTS planning_item" in ddl
+        assert 'CREATE TABLE IF NOT EXISTS "planning_item"' in ddl
+
+    def test_sql_injection_sanitised(self):
+        """Ensure malicious model names are sanitised in DDL output."""
+        schema = {"models": [
+            {"name": "planning_context; DROP TABLE users --", "fields": [
+                {"name": "id", "data_type": "uuid", "nullable": False, "default": "gen_random_uuid()"},
+            ]},
+        ]}
+        ddl = generate_starter_ddl({"nodes": [], "edges": []}, schema=schema, doc_type="PRD")
+        # The semicolon and comment should be stripped; table name should be quoted.
+        assert "DROP TABLE" not in ddl
+        assert '"planning_contextDROPTABLEusers"' in ddl

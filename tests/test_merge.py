@@ -38,8 +38,9 @@ class TestMergeSchemas:
     def test_merges_models(self):
         s1 = {"models": [{"name": "planning_context", "fields": [{"name": "id"}]}], "apis": [], "variables": []}
         s2 = {"models": [{"name": "planning_context", "fields": [{"name": "tenant_id"}]}], "apis": [], "variables": []}
-        merged = merge_schemas([s1, s2])
+        merged, conflicts = merge_schemas([s1, s2])
         assert len(merged["models"]) == 1
         field_names = [f["name"] for f in merged["models"][0]["fields"]]
         assert "id" in field_names
         assert "tenant_id" in field_names
+        assert conflicts == []

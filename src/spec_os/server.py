@@ -203,44 +203,45 @@ async def get_doc_summary(doc_id: str):
     _doc_dir(doc_id)
     spec = _load_json(doc_id, "system_spec")
     meta = spec.get("meta", {})
-    # Gather counts from the actual artifacts
-    graph = {}
-    schema = {}
-    vars_reg = {}
-    comp = {}
-    api_c = []
-    for artifact_name, target in (
-        ("graph", "graph"),
-        ("schema", "schema"),
-        ("variable_registry", "vars_reg"),
-        ("computation_graph", "comp"),
-        ("api_contracts", "api_c"),
-    ):
-        try:
-            payload = _load_json(doc_id, artifact_name)
-        except HTTPException:
-            continue
-        if target == "graph":
-            graph = payload
-        elif target == "schema":
-            schema = payload
-        elif target == "vars_reg":
-            vars_reg = payload
-        elif target == "comp":
-            comp = payload
-        else:
-            api_c = payload
+
+    # Derive counts from the single system_spec.json instead of N+1 disk reads.
+    canonical = spec.get("canonical", {})
+    data_model = spec.get("data_model", {})
+    application = spec.get("application", {})
+    computation = spec.get("computation", {})
+
+    # Variables: canonical model holds variables list
+    variables = canonical.get("variables", [])
+    # Schema models: data_model.schema.entities or data_model.schema.models
+    schema_section = data_model.get("schema", {})
+    models = schema_section.get("entities", schema_section.get("models", []))
+    # APIs: application.apis
+    apis = application.get("apis", [])
+    # Metrics: computation.graph.metrics
+    comp_graph = computation.get("graph", {})
+    metrics = comp_graph.get("metrics", [])
+
+    # Graph counts: fall back to loading graph artifact only if not in system_spec
+    graph_nodes = 0
+    graph_edges = 0
+    try:
+        graph = _load_json(doc_id, "graph")
+        graph_nodes = len(graph.get("nodes", []))
+        graph_edges = len(graph.get("edges", []))
+    except HTTPException:
+        pass
+
     return {
         "doc_id": meta.get("doc_id", doc_id),
         "doc_type": meta.get("doc_type", "UNKNOWN"),
         "spec_score": meta.get("spec_score", 0),
         "ready_for_codegen": meta.get("ready_for_codegen", False),
-        "graph_nodes": len(graph.get("nodes", [])),
-        "graph_edges": len(graph.get("edges", [])),
-        "schema_models": len(schema.get("models", [])),
-        "variables": len(vars_reg.get("variables", [])),
-        "metrics": len(comp.get("metrics", [])),
-        "apis": len(api_c) if isinstance(api_c, list) else 0,
+        "graph_nodes": graph_nodes,
+        "graph_edges": graph_edges,
+        "schema_models": len(models),
+        "variables": len(variables),
+        "metrics": len(metrics),
+        "apis": len(apis) if isinstance(apis, list) else 0,
     }
 
 
