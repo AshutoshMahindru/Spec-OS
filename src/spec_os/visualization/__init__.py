@@ -22,28 +22,51 @@ def _safe_label(s: str) -> str:
 def generate_mermaid_diagrams(graph: dict, computation_graph: dict) -> dict:
     """Return ``{graph_mermaid, computation_mermaid}`` strings."""
 
-    # -- Entity-relationship graph
+    # -- Entity-relationship graph --
+    # Use original node IDs as Mermaid identifiers to avoid collisions that
+    # occur when normalisation maps different names to the same slug.
     lines = ["graph TD"]
-    node_labels: dict[str, str] = {}
-    for n in graph.get("nodes", []):
-        nid = _safe_id(n.get("id", ""))
-        label = n.get("name") or n.get("endpoint") or n.get("formula") or n.get("title") or n.get("id")
-        node_labels[nid] = _safe_label(label)
+    original_id_to_mermaid: dict[str, str] = {}
 
-    for nid, lbl in node_labels.items():
-        lines.append(f'{nid}["{lbl}"]')
+    for idx, n in enumerate(graph.get("nodes", [])):
+        original_id = n.get("id", "")
+        # Create a unique Mermaid-safe ID using the index to prevent collisions.
+        safe = _safe_id(original_id) or f"n{idx}"
+        mermaid_id = f"n{idx}_{safe}"
+        original_id_to_mermaid[original_id] = mermaid_id
+
+        label = (
+            n.get("name")
+            or n.get("endpoint")
+            or n.get("formula")
+            or n.get("title")
+            or n.get("id")
+        )
+        lines.append(f'{mermaid_id}["{_safe_label(label)}"]')
+
     for e in graph.get("edges", []):
-        lines.append(f"{_safe_id(e.get('from', ''))} --> {_safe_id(e.get('to', ''))}")
+        src = original_id_to_mermaid.get(e.get("from", ""))
+        dst = original_id_to_mermaid.get(e.get("to", ""))
+        if src and dst:
+            lines.append(f"{src} --> {dst}")
     graph_diagram = "\n".join(lines)
 
-    # -- Computation DAG
+    # -- Computation DAG --
     lines = ["graph TD"]
+    # Track already-declared input variable nodes to avoid duplicate declarations.
+    declared_inputs: dict[str, str] = {}
+
     for i, m in enumerate(computation_graph.get("metrics", [])):
         mid = f"m_{i}_{_safe_id(m.get('metric', ''))}"
         lines.append(f'{mid}["{_safe_label(m.get("metric", ""))}"]')
         for inp in m.get("depends_on", []):
-            vid = _safe_id(inp)
-            lines.append(f'{vid}["{_safe_label(inp)}"]')
+            sid = _safe_id(inp)
+            if sid not in declared_inputs:
+                vid = f"v_{len(declared_inputs)}_{sid}"
+                declared_inputs[sid] = vid
+                lines.append(f'{vid}["{_safe_label(inp)}"]')
+            else:
+                vid = declared_inputs[sid]
             lines.append(f"{vid} --> {mid}")
     computation_diagram = "\n".join(lines)
 

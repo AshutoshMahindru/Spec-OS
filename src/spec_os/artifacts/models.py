@@ -23,12 +23,59 @@ class TraceabilityRowModel(BaseModel):
 
 
 class ReconciliationIssueModel(BaseModel):
+    """Flexible issue model that accepts any reconciliation issue type.
+
+    Core fields are optional to accommodate all issue types:
+    * MISSING_STORAGE_MAPPING: variable
+    * MISSING_VARIABLE_IN_REGISTRY: variable, metric
+    * API_SCHEMA_MISMATCH: endpoint, model
+    * INVALID_API: api
+    * CONFLICTING_FORMULA: metric, definitions
+    * CONFLICTING_VARIABLE_TYPE: variable, observed_types
+    * CONFLICTING_FIELD_TYPE: model, field, existing, incoming
+    * BROKEN_EDGE / TYPE_MISMATCH_EDGE: edge_type, from, to
+    * POSSIBLE_ALIAS: variable_a, variable_b, similarity
+    * DUPLICATE_API: endpoint, method
+    * CYCLE_DETECTED: metrics (list)
+    * SELF_DEPENDENCY / UNRESOLVED_DEPENDENCY / DUPLICATE_METRIC: metric
+    """
     type: str
+    # Variable/metric identifiers.
     variable: str | None = None
     metric: str | None = None
     endpoint: str | None = None
     model: str | None = None
     api: dict[str, Any] | None = None
+    # Change A: formula conflict details.
+    definitions: list[dict[str, Any]] | None = None
+    # Change A: variable type conflict details.
+    observed_types: list[dict[str, Any]] | None = None
+    # Change E: field conflict details.
+    field: str | None = None
+    existing: dict[str, Any] | None = None
+    incoming: dict[str, Any] | None = None
+    # Change C: edge integrity details.
+    edge_type: str | None = None
+    reason: str | None = None
+    expected_src_type: str | None = None
+    actual_src_type: str | None = None
+    expected_dst_type: str | None = None
+    actual_dst_type: str | None = None
+    # Alias fields from edge dicts (from/to are Python keywords, use Field).
+    from_id: str | None = Field(None, alias="from")
+    to_id: str | None = Field(None, alias="to")
+    # Change B: fuzzy alias fields.
+    variable_a: str | None = None
+    variable_b: str | None = None
+    similarity: float | None = None
+    # Change E: duplicate API details.
+    method: str | None = None
+    # Computation validation: CYCLE_DETECTED.
+    metrics: list[str] | None = None
+    # Computation validation: UNRESOLVED_DEPENDENCY.
+    dependency: str | None = None
+
+    model_config = {"populate_by_name": True}
 
 
 class ReconciliationModel(BaseModel):

@@ -197,17 +197,28 @@ def ingest_file(file_path: str | Path) -> dict:
             api_contracts = build_api_contracts_from_graph(graph)
 
         canonical_schema = build_canonical_schema(schema, variable_registry)
-        var_table_map = build_variable_to_table_mapping(schema, variable_registry)
+        var_table_map = build_variable_to_table_mapping(schema, variable_registry, computation_graph)
         execution_plan = ExecutionPlanModel.model_validate(build_execution_plan(computation_graph)).model_dump(mode="json")
         api_bindings = bind_api_to_schema(api_contracts, schema)
 
-        # ── LAYER 5: Validation ─────────────────────────────────────────
+        # ── LAYER 5: Validation (foolproof reconciliation) ──────────────
         comp_validation = validate_computation_graph(computation_graph)
         reconciliation = ReconciliationModel.model_validate(
-            reconcile_spec(graph, schema, variable_registry, api_contracts)
+            reconcile_spec(
+                graph, schema, variable_registry, api_contracts,
+                canonical_model=canonical_model,
+                computation_validation=comp_validation,
+                graph_validation=graph_validation,
+            )
         ).model_dump(mode="json")
-        spec_score = compute_spec_quality_score(reconciliation, variable_registry, schema, api_contracts, computation_graph)
-        completeness = build_spec_completeness(reconciliation, variable_registry, schema, api_contracts, computation_graph)
+        spec_score = compute_spec_quality_score(
+            reconciliation, variable_registry, schema, api_contracts, computation_graph,
+            doc_type=doc_type,
+        )
+        completeness = build_spec_completeness(
+            reconciliation, variable_registry, schema, api_contracts, computation_graph,
+            doc_type=doc_type,
+        )
 
         # ── LAYER 6: Visualisation + outputs ────────────────────────────
         mermaid = generate_mermaid_diagrams(graph, computation_graph)
@@ -396,7 +407,7 @@ def ingest_multiple_files(file_paths: list[str]) -> dict:
     variable_registry = merged["variable_registry"]
     schema = merged["schema"]
     canonical_schema = build_canonical_schema(schema, variable_registry)
-    var_table_map = build_variable_to_table_mapping(schema, variable_registry)
+    var_table_map = build_variable_to_table_mapping(schema, variable_registry, merged["computation_graph"])
     api_bindings = bind_api_to_schema(merged["api_contracts"], schema)
     spec_score = compute_spec_quality_score(
         merged["reconciliation"],
@@ -404,6 +415,7 @@ def ingest_multiple_files(file_paths: list[str]) -> dict:
         schema,
         merged["api_contracts"],
         merged["computation_graph"],
+        doc_type="MERGED",
     )
     completeness = build_spec_completeness(
         merged["reconciliation"],
@@ -411,6 +423,7 @@ def ingest_multiple_files(file_paths: list[str]) -> dict:
         schema,
         merged["api_contracts"],
         merged["computation_graph"],
+        doc_type="MERGED",
     )
     mermaid = generate_mermaid_diagrams(merged["graph"], merged["computation_graph"])
     ddl_sql = generate_starter_ddl(merged["graph"], schema=schema, doc_type="MERGED")

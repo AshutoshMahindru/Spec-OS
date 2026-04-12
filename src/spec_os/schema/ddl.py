@@ -18,6 +18,19 @@ def _sql_type(dtype: str) -> str:
     return _TYPE_MAP.get(str(dtype).lower(), str(dtype).upper())
 
 
+def _quote_ident(name: str) -> str:
+    """Sanitise a SQL identifier to prevent injection.
+
+    Strips any characters that are not alphanumeric or underscores, then wraps
+    the result in double-quotes so that PostgreSQL treats it as a delimited
+    identifier.  An empty result defaults to ``"unnamed"``.
+    """
+    sanitized = re.sub(r"[^a-zA-Z0-9_]", "", name)
+    if not sanitized or re.match(r"^\d", sanitized):
+        sanitized = f"t_{sanitized}" if sanitized else "unnamed"
+    return f'"{sanitized}"'
+
+
 def generate_starter_ddl(graph: dict, *, schema: dict | None = None, doc_type: str | None = None) -> str:
     """Return a DDL string suitable for PostgreSQL."""
     blocks: list[str] = [
@@ -29,12 +42,12 @@ def generate_starter_ddl(graph: dict, *, schema: dict | None = None, doc_type: s
     if doc_type == "PRD" and schema:
         _ddl_from_schema_models(blocks, schema)
         blocks.extend([
-            "ALTER TABLE driver_assumption ADD CONSTRAINT fk_driver_assumption_context"
-            " FOREIGN KEY (planning_context_id) REFERENCES planning_context(id);",
-            "ALTER TABLE computed_metric ADD CONSTRAINT fk_computed_metric_context"
-            " FOREIGN KEY (planning_context_id) REFERENCES planning_context(id);",
+            "ALTER TABLE \"driver_assumption\" ADD CONSTRAINT fk_driver_assumption_context"
+            " FOREIGN KEY (planning_context_id) REFERENCES \"planning_context\"(id);",
+            "ALTER TABLE \"computed_metric\" ADD CONSTRAINT fk_computed_metric_context"
+            " FOREIGN KEY (planning_context_id) REFERENCES \"planning_context\"(id);",
             "CREATE INDEX IF NOT EXISTS idx_planning_context_grain"
-            " ON planning_context (tenant_id, company_id, scenario_id, assumption_set_id, planning_period_id);",
+            " ON \"planning_context\" (tenant_id, company_id, scenario_id, assumption_set_id, planning_period_id);",
         ])
         return "\n".join(blocks)
 
@@ -43,7 +56,7 @@ def generate_starter_ddl(graph: dict, *, schema: dict | None = None, doc_type: s
 
     # Fallback
     blocks.extend([
-        "CREATE TABLE IF NOT EXISTS planning_item (",
+        "CREATE TABLE IF NOT EXISTS \"planning_item\" (",
         "    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),",
         "    tenant_id UUID NOT NULL,",
         "    scenario_id UUID,",
@@ -54,7 +67,7 @@ def generate_starter_ddl(graph: dict, *, schema: dict | None = None, doc_type: s
         "    updated_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now()",
         ");",
         "",
-        "CREATE TABLE IF NOT EXISTS api_contract (",
+        "CREATE TABLE IF NOT EXISTS \"api_contract\" (",
         "    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),",
         "    endpoint TEXT NOT NULL,",
         "    method TEXT,",
@@ -71,12 +84,14 @@ def _field_line(field: dict) -> str:
     dtype = _sql_type(field.get("data_type") or "TEXT")
     nullable = "" if field.get("nullable", True) else " NOT NULL"
     default = f" DEFAULT {field['default']}" if field.get("default") not in (None, "") else ""
-    return f"    {field['name']} {dtype}{nullable}{default},"
+    col_name = _quote_ident(field.get("name", "col"))
+    return f"    {col_name} {dtype}{nullable}{default},"
 
 
 def _ddl_from_schema_models(blocks: list[str], schema: dict) -> None:
     for model in schema.get("models", []):
-        lines = [f"CREATE TABLE IF NOT EXISTS {model['name']} ("]
+        table_name = _quote_ident(model["name"])
+        lines = [f"CREATE TABLE IF NOT EXISTS {table_name} ("]
         for field in model.get("fields", []):
             lines.append(_field_line(field))
         lines.append("    created_at TIMESTAMP WITH TIME ZONE NOT NULL DEFAULT now(),")
@@ -99,9 +114,9 @@ def _ddl_from_graph_data_models(blocks: list[str], graph: dict) -> bool:
     for node in nodes:
         if node["type"] != "DataModel":
             continue
-        table_name = re.sub(r"[^a-z0-9]+", "_", node.get("name", "model").lower()).strip("_") or "model"
-        if re.match(r"^\d", table_name):
-            table_name = f"t_{table_name}"
+        table_name = _quote_ident(
+            re.sub(r"[^a-z0-9]+", "_", node.get("name", "model").lower()).strip("_") or "model"
+        )
         lines = [f"CREATE TABLE IF NOT EXISTS {table_name} (", "    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),"]
         for fid in fields_by_model.get(node["id"], []):
             field = node_map.get(fid)
